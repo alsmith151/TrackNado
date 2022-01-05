@@ -1,13 +1,14 @@
+import os
 import pathlib
+import shutil
+import tempfile
 from re import sub
 from typing import Dict, Tuple
-import trackhub
-import seaborn as sns
-import shutil
-import pandas as pd
-import os
+
 import numpy as np
-import tempfile
+import pandas as pd
+import seaborn as sns
+import trackhub
 
 
 def get_file_attributes(files: Tuple):
@@ -90,13 +91,13 @@ def get_colors(df_file_attributes: pd.DataFrame, palette: str):
     return color_mapping
 
 
-def add_composite_tracks_to_hub(
+def add_composite_tracks_for_group(
+    group_name: str,
     hub: trackhub.Hub,
-    trackdb: trackhub.TrackDb,
-    bigwigs: pd.DataFrame,
+    container: trackhub.TrackDb,
+    track_details: pd.DataFrame,
     subgroup_definitions: Dict[str, trackhub.SubGroupDefinition],
     color_mapping: Dict[str, Tuple[float, float, float]],
-    grouping_column: str = None,
     custom_genome: bool = False,
 ):
 
@@ -104,7 +105,7 @@ def add_composite_tracks_to_hub(
         zip([f"dim{d}" for d in ["X", "Y", "A", "B", "C", "D"]], subgroup_definitions)
     )
 
-    for group_name, df in bigwigs.groupby(grouping_column):
+    for track_type, df in track_details.groupby("ext"):
 
         # Make composite for grouping
         composite = trackhub.CompositeTrack(
@@ -112,7 +113,7 @@ def add_composite_tracks_to_hub(
             short_label=group_name,
             dimensions=" ".join([f"{k}={v}" for k, v in dimensions.items()]),
             sortOrder=" ".join([f"{k}=+" for k in subgroup_definitions]),
-            tracktype="bigWig",
+            tracktype=track_type,
             visibility="hide",
             dragAndDrop="subTracks",
             allButtonPair="off",
@@ -125,19 +126,19 @@ def add_composite_tracks_to_hub(
         # Add the subgroup definitions
         composite.add_subgroups([*subgroup_definitions.values()])
 
-        # Create bigwig tracks
-        for bw in df.itertuples():
+        for track_file in df.itertuples():
             track = trackhub.Track(
-                name=bw.samplename,
-                source=bw.fn,
+                name=track_file.samplename,
+                source=track_file.fn,
                 autoScale="on",
-                tracktype="bigWig",
+                tracktype=track_type,
                 windowingFunction="mean",
                 subgroups={
-                    getattr(bw, subgroup).lower() for subgroup in subgroup_definitions
+                    getattr(track_file, subgroup).lower()
+                    for subgroup in subgroup_definitions
                 },
                 color=",".join(
-                    [str(int(x * 255)) for x in color_mapping[bw.samplename]]
+                    [str(int(x * 255)) for x in color_mapping[track_file.samplename]]
                 ),
             )
 
@@ -149,15 +150,16 @@ def add_composite_tracks_to_hub(
             composite.add_subtrack(track)
 
         # Add to trackdb
-        trackdb.add_tracks(composite)
+        container.add_tracks(composite)
 
 
-def add_tracks_to_hub(
+def add_tracks(
     hub: trackhub.Hub,
-    trackdb: trackhub.TrackDb,
+    parent: trackhub.BaseTrack,
     tracks: pd.DataFrame,
-    custom_genome: bool = False,
-):
+    color_mapping: Dict[str, Tuple[float, float, float]],
+    custom_genome: bool = False
+    ):
 
     for track_file in tracks.itertuples():
 
@@ -165,12 +167,17 @@ def add_tracks_to_hub(
             name=track_file.samplename,
             source=track_file.fn,
             tracktype=track_file.ext.strip("."),
+            autoScale="on",
+            color=",".join(
+                    [str(int(x * 255)) for x in color_mapping[track_file.samplename]]
+                )
+
         )
 
         if custom_genome:
             track.add_params(group=hub.hub)
 
-        trackdb.add_tracks(track)
+        parent.add_tracks(track)
 
 
 def stage_hub(
@@ -204,15 +211,19 @@ def stage_hub(
         )
 
 
-def make_hub(files: Tuple, output: str, design: str, groups: str = None, **kwargs):
+def make_hub(files: Tuple, output: str, details: str, group_by: str = None, **kwargs):
 
     # Get file attributes
     df_file_attributes = get_file_attributes(files)
 
     # Design matrix in the format: filename samplename ATTRIBUTE_1 ATTRIBUTE_2 ...
-    df_design = pd.read_csv(design, sep=r"\s+|\t|,", engine="python", index_col=0)
+    if isinstance(details, str):
+        df_details = pd.read_csv(details, sep=r"\s+|\t|,", engine="python", index_col="filename")
+    elif isinstance(details, pd.DataFrame):
+        df_details = details
+
     df_file_attributes = get_groups_from_design_matrix(
-        df_file_attributes=df_file_attributes, df_design=df_design
+        df_file_attributes=df_file_attributes, df_design=df_details
     )
 
     # Create hub
@@ -240,7 +251,7 @@ def make_hub(files: Tuple, output: str, design: str, groups: str = None, **kwarg
 
     # Create composite track definitiions
     subgroup_definitions = get_subgroup_definitions(
-        df_file_attributes=df_file_attributes, grouping_column=groups
+        df_file_attributes=df_file_attributes, grouping_column=group_by
     )
 
     # Get colours
@@ -248,26 +259,37 @@ def make_hub(files: Tuple, output: str, design: str, groups: str = None, **kwarg
         df_file_attributes=df_file_attributes, palette=kwargs.get("palette", "hls")
     )
 
-    # Add tracks to hub
-    df_bigwigs = df_file_attributes.loc[
-        lambda df: df["ext"].str.lower().isin([".bigwig", "bigwig"])
-    ]
+    # Add tracks to trackdb
+    if group_by:
+        for group_name, df in df_file_attributes.groupby(group_by):
+            supertrack = trackhub.SuperTrack(name=group_name)
+            add_composite_tracks_for_group(
+                group_name=group_name,
+                hub=hub,
+                container=supertrack,
+                track_details=df,
+                subgroup_definitions=subgroup_definitions,
+                color_mapping=colors_mapping,
+                custom_genome=custom_genome,
+            )
 
-    add_composite_tracks_to_hub(
-        hub,
-        trackdb,
-        bigwigs=df_bigwigs,
-        subgroup_definitions=subgroup_definitions,
-        color_mapping=colors_mapping,
-        grouping_column=groups,
-        custom_genome=custom_genome,
+            if custom_genome:
+                supertrack.add_params(group=hub.hub)
+
+            trackdb.add_tracks(supertrack)
+    else:
+        add_tracks(
+            hub=hub,
+            parent=trackdb,
+            tracks=df_file_attributes,
+            custom_genome=custom_genome,
+        )
+
+    # Copy hub to the correct directory
+    stage_hub(
+        hub=hub,
+        genome=genome,
+        outdir=output,
+        description_url_path=kwargs.get("description_html"),
+        symlink=kwargs.get("symlink"),
     )
-
-    # Add all other files to the hub
-    df_other_tracks = df_file_attributes.loc[
-        lambda df: ~(df["ext"].str.lower().isin(["bigwig", ".bigwig"]))
-    ]
-
-    add_tracks_to_hub(hub, trackdb, tracks=df_other_tracks, custom_genome=custom_genome)
-
-    stage_hub(hub, genome, outdir=output, description_url_path=kwargs["description_url_path"], symlink=kwargs.get("symlink", False))
