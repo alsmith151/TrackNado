@@ -32,9 +32,8 @@ def get_groups_from_design_matrix(
     df_file_attributes: pd.DataFrame, df_design: pd.DataFrame
 ):
     return (
-        df_file_attributes.set_index("basename")
-        .join(df_design)
-        .reset_index()
+        df_file_attributes
+        .merge(df_design, on="basename")
     )
 
 
@@ -67,6 +66,7 @@ def get_genome_file(genome_name: str, custom_genome: bool = False, **kwargs):
 def get_subgroup_definitions(
     df_file_attributes: pd.DataFrame, grouping_column: str = None
 ):
+
     group_members = (
         df_file_attributes.drop(columns=["fn", "path", "basename", "ext", "name"])
         .loc[:, lambda df: [col for col in df.columns if not grouping_column == col]]
@@ -233,6 +233,7 @@ def make_hub(files: Tuple, output: str, details: str, group_by: str = None, ungr
         df_details = details
     else:
         raise RuntimeError("File detail not provided")
+
 
     df_file_attributes = get_groups_from_design_matrix(
         df_file_attributes=df_file_attributes, df_design=df_details
