@@ -131,7 +131,7 @@ def add_composite_tracks_for_group(
         for track_file in df.itertuples():
 
             track = trackhub.Track(
-                name=trackhub.helpers.sanitize(track_file.name),
+                name=f"{trackhub.helpers.sanitize(track_file.name)}_{group_name}",
                 shortLabel=" ".join(re.split(r"[.|_|\s+|-]", track_file.name)),
                 longLabel=" ".join(re.split(r"[.|_|\s+|-]", track_file.name)),
                 source=track_file.path,
