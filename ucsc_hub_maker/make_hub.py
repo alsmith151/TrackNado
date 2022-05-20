@@ -68,17 +68,18 @@ def get_subgroup_definitions(
 ):
 
     group_members = (
-        df_file_attributes.drop(columns=["fn", "path", "basename", "ext", "name"])
-        .loc[:, lambda df: [col for col in df.columns if not grouping_column == col]]
+        df_file_attributes
+        .drop(columns=["fn", "path", "basename", "ext", "name", grouping_column])
         .apply(lambda ser: ser.unique())
         .to_dict()
     )
+
 
     return {
         grouping: trackhub.SubGroupDefinition(
             name=grouping,
             label=grouping.capitalize(),
-            mapping={g.lower():g for g in group},
+            mapping={g.lower() : g for g in group.values()},
         )
         for grouping, group in group_members.items()
     }
