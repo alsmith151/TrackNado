@@ -73,26 +73,23 @@ def get_ngs_pipeline_attributes(df_file_attributes: pd.DataFrame):
 def create_hub(files, **kwargs):
 
     if kwargs["mode"] == "capcruncher":
+
         df = get_file_attributes(files)
         attributes = df["basename"].str.extract(
             r"(?P<samplename>.*?)\.(?P<method>.*?)\.(?P<viewpoint>.*?)\.(?P<file_type>.*)"
         )
 
-        df_details = pd.concat(
-            [df.rename(columns={"basename": "filename"})
-             ["filename"], attributes],
-            axis=1,
-        ).set_index("filename")
-
-
-        df_details["track_category"] = categorise_capcruncher_tracks(df_details)
-        df_details = df_details.drop(columns=["file_type", "method"])
+        df_details = df.join(attributes)
+        df_details["track_category"] = categorise_capcruncher_tracks(
+            df_details)
+        df_details = (df_details[["fn", "samplename","viewpoint", "track_category"]]
+                                .set_index("fn"))
 
         make_hub(
             files=files,
             details=df_details,
             group_by="track_category",
-            **{k:v for k,v in kwargs.items() if not k in ["files", "details", "group_by"]}
+            **{k: v for k, v in kwargs.items() if not k in ["files", "details", "group_by"]}
         )
 
     elif kwargs["mode"] == "ngs-pipeline":
