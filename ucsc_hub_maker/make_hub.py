@@ -3,10 +3,9 @@ import pathlib
 import shutil
 import tempfile
 import re
-from typing import Dict, Tuple
+from typing import Dict, Tuple, Union
 
 import numpy as np
-from numpy.testing._private.utils import tempdir
 import pandas as pd
 import seaborn as sns
 import trackhub
@@ -33,7 +32,9 @@ def get_groups_from_design_matrix(
 ):
     return (
         df_file_attributes
-        .merge(df_design, on="basename")
+        .set_index("fn")
+        .join(df_design)
+        .reset_index()
     )
 
 
@@ -67,22 +68,28 @@ def get_subgroup_definitions(
     df_file_attributes: pd.DataFrame, grouping_column: str = None
 ):
 
+    columns_to_drop = ["fn", "path", "basename", "ext", "name"]
+
+    if grouping_column:
+        columns_to_drop.append(grouping_column)
+
     group_members = (
         df_file_attributes
-        .drop(columns=["fn", "path", "basename", "ext", "name", grouping_column])
+        .drop(columns=columns_to_drop)
         .apply(lambda ser: ser.unique())
         .to_dict()
     )
 
-
-    return {
+    subgroups = {
         grouping: trackhub.SubGroupDefinition(
             name=grouping,
             label=grouping.capitalize(),
-            mapping={g.lower() : g for g in group.values()},
+            mapping={g.lower(): g for g in group},
         )
         for grouping, group in group_members.items()
     }
+
+    return subgroups
 
 
 def get_colors(df_file_attributes: pd.DataFrame, palette: str):
@@ -90,6 +97,14 @@ def get_colors(df_file_attributes: pd.DataFrame, palette: str):
     colors = sns.color_palette(palette=palette, n_colors=len(unique_samples))
     color_mapping = dict(zip(unique_samples, colors))
     return color_mapping
+
+
+def get_track_subgroups(
+    track_details: tuple,
+    subgroup_definitions: Dict[str, trackhub.SubGroupDefinition],
+):
+    return "_".join([getattr(track_details, subgroup).lower()
+                     for subgroup in subgroup_definitions])
 
 
 def add_composite_tracks_for_group(
@@ -126,12 +141,90 @@ def add_composite_tracks_for_group(
             composite.add_params(group=hub.hub)
 
         # Add the subgroup definitions
-        composite.add_subgroups([definition for definition in subgroup_definitions.values()])
+        composite.add_subgroups(
+            [definition for definition in subgroup_definitions.values()])
 
         for track_file in df.itertuples():
 
+            track_name_base = trackhub.helpers.sanitize(track_file.name)
+            track_groupings = get_track_subgroups(
+                track_file, subgroup_definitions)
+
             track = trackhub.Track(
-                name=f"{trackhub.helpers.sanitize(track_file.name)}_{group_name}",
+                name=f"{track_name_base}_{track_groupings}",
+                shortLabel=" ".join(re.split(r"[.|_|\s+|-]", track_file.name)),
+                longLabel=" ".join(re.split(r"[.|_|\s+|-]", track_file.name)),
+                source=track_file.path,
+                autoScale="on",
+                tracktype=track_type,
+                windowingFunction="mean",
+                subgroups={
+                    subgroup: getattr(track_file, subgroup).lower()
+                    for subgroup in subgroup_definitions
+                },
+                color=",".join(
+                    [str(int(x * 255))
+                     for x in color_mapping[track_file.samplename]]
+                ),
+            )
+
+            # Add group to track if custom genome
+            if custom_genome:
+                track.add_params(group=hub.hub)
+
+            # Append track to composite
+            composite.add_subtrack(track)
+
+        # Add to trackdb
+        container.add_tracks(composite)
+
+
+def add_composite_track(hub: trackhub.Hub,
+                        container: trackhub.TrackDb,
+                        track_details: pd.DataFrame,
+                        subgroup_definitions: Dict[str, trackhub.SubGroupDefinition],
+                        color_mapping: Dict[str, Tuple[float, float, float]],
+                        custom_genome: bool = False,):
+
+    dimensions = dict(
+        zip([f"dim{d}" for d in ["X", "Y", "A", "B", "C", "D"]],
+            subgroup_definitions)
+    )
+
+    for track_type, df in track_details.groupby("ext"):
+
+        track_types = {"bigwig": "Signal_Pileup",
+                       "bigbed": "Peaks_or_Regions_of_Interest"}
+
+        # Make composite for each file type
+        composite = trackhub.CompositeTrack(
+            name=f"{track_types.get(track_type.lower(), 'Tracks')}",
+            short_label=f"{track_type}",
+            dimensions=" ".join([f"{k}={v}" for k, v in dimensions.items()]),
+            sortOrder=" ".join([f"{k}=+" for k in subgroup_definitions]),
+            tracktype=track_type,
+            visibility="hide",
+            dragAndDrop="subTracks",
+            allButtonPair="off",
+        )
+
+        # Need to add group if custom genome
+        if custom_genome:
+            composite.add_params(group=hub.hub)
+
+        # Add the subgroup definitions
+        composite.add_subgroups(
+            [definition for definition in subgroup_definitions.values()])
+
+        # Add tracks to composite
+        for track_file in df.itertuples():
+
+            track_name_base = trackhub.helpers.sanitize(track_file.name)
+            track_groupings = get_track_subgroups(
+                track_file, subgroup_definitions)
+
+            track = trackhub.Track(
+                name=f"{track_name_base}_{track_groupings}_{track_type}",
                 shortLabel=" ".join(re.split(r"[.|_|\s+|-]", track_file.name)),
                 longLabel=" ".join(re.split(r"[.|_|\s+|-]", track_file.name)),
                 source=track_file.path,
@@ -218,10 +311,10 @@ def stage_hub(
         symlinks=False,
     )
 
-    #shutil.rmtree(tempdir)
+    # shutil.rmtree(tempdir)
 
 
-def make_hub(files: Tuple, output: str, details: str, group_by: str = None, ungrouped_tracks: Tuple[str] = None, **kwargs):
+def make_hub(files: Tuple, output: str, details: Union[str, pd.DataFrame], group_by: str = None, generic_tracks: Tuple[str] = None, **kwargs):
 
     # Get file attributes
     df_file_attributes = get_file_attributes(files)
@@ -234,7 +327,6 @@ def make_hub(files: Tuple, output: str, details: str, group_by: str = None, ungr
         df_details = details
     else:
         raise RuntimeError("File detail not provided")
-
 
     df_file_attributes = get_groups_from_design_matrix(
         df_file_attributes=df_file_attributes, df_design=df_details
@@ -293,19 +385,22 @@ def make_hub(files: Tuple, output: str, details: str, group_by: str = None, ungr
                 supertrack.add_params(group=hub.hub)
 
             trackdb.add_tracks(supertrack)
+
     else:
-        add_tracks(
+        add_composite_track(
             hub=hub,
-            parent=trackdb,
-            tracks=df_file_attributes,
+            container=trackdb,
+            track_details=df_file_attributes,
+            subgroup_definitions=subgroup_definitions,
+            color_mapping=colors_mapping,
             custom_genome=custom_genome,
         )
 
-    if ungrouped_tracks:
+    if generic_tracks:
         add_tracks(
             hub=hub,
             parent=trackdb,
-            tracks=get_file_attributes(ungrouped_tracks),
+            tracks=get_file_attributes(generic_tracks),
             custom_genome=custom_genome,
         )
 
