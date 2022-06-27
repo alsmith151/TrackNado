@@ -1,7 +1,6 @@
 import os
 import pathlib
 import shutil
-import tempfile
 import re
 from typing import Dict, Tuple, Union
 
@@ -35,6 +34,7 @@ def get_groups_from_design_matrix(
         .set_index("fn")
         .join(df_design)
         .reset_index()
+        .rename(columns={"index": "fn"})
     )
 
 
@@ -75,7 +75,7 @@ def get_subgroup_definitions(
 
     group_members = (
         df_file_attributes
-        .drop(columns=columns_to_drop)
+        .drop(columns=columns_to_drop, errors="ignore")
         .apply(lambda ser: ser.unique())
         .to_dict()
     )
@@ -185,7 +185,7 @@ def add_composite_track(hub: trackhub.Hub,
                         subgroup_definitions: Dict[str, trackhub.SubGroupDefinition],
                         color_mapping: Dict[str, Tuple[float, float, float]],
                         custom_genome: bool = False,):
-
+    
     dimensions = dict(
         zip([f"dim{d}" for d in ["X", "Y", "A", "B", "C", "D"]],
             subgroup_definitions)
@@ -216,6 +216,7 @@ def add_composite_track(hub: trackhub.Hub,
         composite.add_subgroups(
             [definition for definition in subgroup_definitions.values()])
 
+
         # Add tracks to composite
         for track_file in df.itertuples():
 
@@ -224,7 +225,7 @@ def add_composite_track(hub: trackhub.Hub,
                 track_file, subgroup_definitions)
 
             track = trackhub.Track(
-                name=f"{track_name_base}_{track_groupings}_{track_type}",
+                name=f"{track_groupings}_{track_type}",
                 shortLabel=" ".join(re.split(r"[.|_|\s+|-]", track_file.name)),
                 longLabel=" ".join(re.split(r"[.|_|\s+|-]", track_file.name)),
                 source=track_file.path,
