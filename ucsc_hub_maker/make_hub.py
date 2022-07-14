@@ -84,7 +84,7 @@ def get_subgroup_definitions(
         grouping: trackhub.SubGroupDefinition(
             name=grouping,
             label=grouping.capitalize(),
-            mapping={g.lower(): g for g in group},
+            mapping={str(g).lower(): g for g in group},
         )
         for grouping, group in group_members.items()
     }
