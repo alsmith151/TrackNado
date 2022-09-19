@@ -70,6 +70,12 @@ def get_ngs_pipeline_attributes(df_file_attributes: pd.DataFrame):
     help="Name of genome",
     default="hg19",
 )
+@click.option(
+    "--color-by",
+    help="Name of column in details dataframe to use for track colors",
+    multiple=True,
+    default=("samplename", ),
+)
 def create_hub(files, **kwargs):
 
     if kwargs["mode"] == "capcruncher":

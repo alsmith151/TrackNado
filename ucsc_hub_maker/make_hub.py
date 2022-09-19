@@ -30,8 +30,7 @@ def get_groups_from_design_matrix(
     df_file_attributes: pd.DataFrame, df_design: pd.DataFrame
 ):
     return (
-        df_file_attributes
-        .set_index("fn")
+        df_file_attributes.set_index("fn")
         .join(df_design)
         .reset_index()
         .rename(columns={"index": "fn"})
@@ -74,10 +73,9 @@ def get_subgroup_definitions(
         columns_to_drop.append(grouping_column)
 
     group_members = (
-        df_file_attributes
-        .drop(columns=columns_to_drop, errors="ignore")
-        .apply(lambda ser: list(set(ser)))
-        .to_dict("list")
+        df_file_attributes.drop(columns=columns_to_drop, errors="ignore")
+        .apply(lambda ser: list(ser.unique()))
+        .to_dict()
     )
 
     subgroups = {
@@ -92,8 +90,22 @@ def get_subgroup_definitions(
     return subgroups
 
 
-def get_colors(df_file_attributes: pd.DataFrame, palette: str):
-    unique_samples = df_file_attributes["samplename"].unique()
+def get_colors(
+    df_file_attributes: pd.DataFrame,
+    palette: str,
+    color_by=[
+        "samplename",
+    ],
+):
+
+    if len(color_by) == 1:
+        unique_samples = df_file_attributes[color_by[0]].unique()
+    else:
+        unique_samples = (
+            df_file_attributes[color_by].drop_duplicates()
+                                        .astype(str)
+                                        .apply("".join, axis=1)
+        )
     colors = sns.color_palette(palette=palette, n_colors=len(unique_samples))
     color_mapping = dict(zip(unique_samples, colors))
     return color_mapping
@@ -103,8 +115,9 @@ def get_track_subgroups(
     track_details: tuple,
     subgroup_definitions: Dict[str, trackhub.SubGroupDefinition],
 ):
-    return "_".join([getattr(track_details, subgroup).lower()
-                     for subgroup in subgroup_definitions])
+    return "_".join(
+        [getattr(track_details, subgroup).lower() for subgroup in subgroup_definitions]
+    )
 
 
 def add_composite_tracks_for_group(
@@ -113,13 +126,13 @@ def add_composite_tracks_for_group(
     container: trackhub.TrackDb,
     track_details: pd.DataFrame,
     subgroup_definitions: Dict[str, trackhub.SubGroupDefinition],
+    color_by: list,
     color_mapping: Dict[str, Tuple[float, float, float]],
     custom_genome: bool = False,
 ):
 
     dimensions = dict(
-        zip([f"dim{d}" for d in ["X", "Y", "A", "B", "C", "D"]],
-            subgroup_definitions)
+        zip([f"dim{d}" for d in ["X", "Y", "A", "B", "C", "D"]], subgroup_definitions)
     )
 
     for track_type, df in track_details.groupby("ext"):
@@ -142,13 +155,13 @@ def add_composite_tracks_for_group(
 
         # Add the subgroup definitions
         composite.add_subgroups(
-            [definition for definition in subgroup_definitions.values()])
+            [definition for definition in subgroup_definitions.values()]
+        )
 
         for track_file in df.itertuples():
 
             track_name_base = trackhub.helpers.sanitize(track_file.name)
-            track_groupings = get_track_subgroups(
-                track_file, subgroup_definitions)
+            track_groupings = get_track_subgroups(track_file, subgroup_definitions)
 
             track = trackhub.Track(
                 name=f"{track_name_base}_{track_groupings}",
@@ -163,8 +176,10 @@ def add_composite_tracks_for_group(
                     for subgroup in subgroup_definitions
                 },
                 color=",".join(
-                    [str(int(x * 255))
-                     for x in color_mapping[track_file.samplename]]
+                    [
+                        str(int(x * 255))
+                        for x in color_mapping["".join(getattr(track_file, cb) for cb in color_by)]
+                    ]
                 ),
             )
 
@@ -179,22 +194,26 @@ def add_composite_tracks_for_group(
         container.add_tracks(composite)
 
 
-def add_composite_track(hub: trackhub.Hub,
-                        container: trackhub.TrackDb,
-                        track_details: pd.DataFrame,
-                        subgroup_definitions: Dict[str, trackhub.SubGroupDefinition],
-                        color_mapping: Dict[str, Tuple[float, float, float]],
-                        custom_genome: bool = False,):
-    
+def add_composite_track(
+    hub: trackhub.Hub,
+    container: trackhub.TrackDb,
+    track_details: pd.DataFrame,
+    subgroup_definitions: Dict[str, trackhub.SubGroupDefinition],
+    color_by: list,
+    color_mapping: Dict[str, Tuple[float, float, float]],
+    custom_genome: bool = False,
+):
+
     dimensions = dict(
-        zip([f"dim{d}" for d in ["X", "Y", "A", "B", "C", "D"]],
-            subgroup_definitions)
+        zip([f"dim{d}" for d in ["X", "Y", "A", "B", "C", "D"]], subgroup_definitions)
     )
 
     for track_type, df in track_details.groupby("ext"):
 
-        track_types = {"bigwig": "Signal_Pileup",
-                       "bigbed": "Peaks_or_Regions_of_Interest"}
+        track_types = {
+            "bigwig": "Signal_Pileup",
+            "bigbed": "Peaks_or_Regions_of_Interest",
+        }
 
         # Make composite for each file type
         composite = trackhub.CompositeTrack(
@@ -214,15 +233,14 @@ def add_composite_track(hub: trackhub.Hub,
 
         # Add the subgroup definitions
         composite.add_subgroups(
-            [definition for definition in subgroup_definitions.values()])
-
+            [definition for definition in subgroup_definitions.values()]
+        )
 
         # Add tracks to composite
         for track_file in df.itertuples():
 
             track_name_base = trackhub.helpers.sanitize(track_file.name)
-            track_groupings = get_track_subgroups(
-                track_file, subgroup_definitions)
+            track_groupings = get_track_subgroups(track_file, subgroup_definitions)
 
             track = trackhub.Track(
                 name=f"{track_groupings}_{track_type}",
@@ -237,8 +255,7 @@ def add_composite_track(hub: trackhub.Hub,
                     for subgroup in subgroup_definitions
                 },
                 color=",".join(
-                    [str(int(x * 255))
-                     for x in color_mapping[track_file.samplename]]
+                    [str(int(x * 255)) for x in color_mapping["".join(getattr(track_file, cb) for cb in color_by)]]
                 ),
             )
 
@@ -257,8 +274,9 @@ def add_tracks(
     hub: trackhub.Hub,
     parent: trackhub.BaseTrack,
     tracks: pd.DataFrame,
+    color_by: list,
     color_mapping: Dict[str, Tuple[float, float, float]],
-    custom_genome: bool = False
+    custom_genome: bool = False,
 ):
 
     for track_file in tracks.itertuples():
@@ -269,10 +287,8 @@ def add_tracks(
             tracktype=track_file.ext.strip("."),
             autoScale="on",
             color=",".join(
-                [str(int(x * 255))
-                 for x in color_mapping[track_file.samplename]]
-            )
-
+                [str(int(x * 255)) for x in color_mapping["".join(getattr(track_file, cb) for cb in color_by)]]
+            ),
         )
 
         if custom_genome:
@@ -296,8 +312,7 @@ def stage_hub(
         description_basename = os.path.basename(description_url_path)
         with open(os.path.join(tmpdir, f"{hub.hub}.hub.txt"), "a") as hubtxt:
             hubtxt.write("\n")
-            hubtxt.write(
-                f"descriptionUrl {genome.genome}/{description_basename}\n")
+            hubtxt.write(f"descriptionUrl {genome.genome}/{description_basename}\n")
 
         shutil.copy(
             description_url_path,
@@ -315,7 +330,14 @@ def stage_hub(
     # shutil.rmtree(tempdir)
 
 
-def make_hub(files: Tuple, output: str, details: Union[str, pd.DataFrame], group_by: str = None, generic_tracks: Tuple[str] = None, **kwargs):
+def make_hub(
+    files: Tuple,
+    output: str,
+    details: Union[str, pd.DataFrame],
+    group_by: str = None,
+    generic_tracks: Tuple[str] = None,
+    **kwargs,
+):
 
     # Get file attributes
     df_file_attributes = get_file_attributes(files)
@@ -323,7 +345,8 @@ def make_hub(files: Tuple, output: str, details: Union[str, pd.DataFrame], group
     # Design matrix in the format: filename samplename ATTRIBUTE_1 ATTRIBUTE_2 ...
     if isinstance(details, str):
         df_details = pd.read_csv(
-            details, sep=r"\s+|\t|,", engine="python", index_col="filename")
+            details, sep=r"\s+|\t|,", engine="python", index_col="filename"
+        )
     elif isinstance(details, pd.DataFrame):
         df_details = details
     else:
@@ -343,8 +366,7 @@ def make_hub(files: Tuple, output: str, details: Union[str, pd.DataFrame], group
 
     # Genome
     custom_genome = kwargs.get("custom_genome", False)
-    genome = get_genome_file(
-        kwargs["genome_name"], custom_genome=custom_genome)
+    genome = get_genome_file(kwargs["genome_name"], custom_genome=custom_genome)
 
     # Create genomes file
     genomes_file = trackhub.GenomesFile()
@@ -363,10 +385,13 @@ def make_hub(files: Tuple, output: str, details: Union[str, pd.DataFrame], group
     )
 
     # Get colours
-    colors_mapping = get_colors(
-        df_file_attributes=df_file_attributes, palette=kwargs.get(
-            "palette", "hls")
-    )
+    color_by = list(kwargs.get("color_by", ["samplename",]))
+
+    color_mapping =  get_colors(
+            df_file_attributes=df_file_attributes,
+            palette=kwargs.get("palette", "hls"),
+            color_by=color_by,
+        )
 
     # Add tracks to trackdb
     if group_by:
@@ -378,7 +403,8 @@ def make_hub(files: Tuple, output: str, details: Union[str, pd.DataFrame], group
                 container=supertrack,
                 track_details=df,
                 subgroup_definitions=subgroup_definitions,
-                color_mapping=colors_mapping,
+                color_by=color_by,
+                color_mapping=color_mapping,
                 custom_genome=custom_genome,
             )
 
@@ -393,7 +419,7 @@ def make_hub(files: Tuple, output: str, details: Union[str, pd.DataFrame], group
             container=trackdb,
             track_details=df_file_attributes,
             subgroup_definitions=subgroup_definitions,
-            color_mapping=colors_mapping,
+            color_mapping=color_mapping,
             custom_genome=custom_genome,
         )
 
