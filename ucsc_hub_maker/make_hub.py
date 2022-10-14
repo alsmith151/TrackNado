@@ -72,11 +72,8 @@ def get_subgroup_definitions(
     if grouping_column:
         columns_to_drop.append(grouping_column)
 
-    group_members = (
-        df_file_attributes.drop(columns=columns_to_drop, errors="ignore")
-        .apply(lambda ser: list(ser.unique()))
-        .to_dict()
-    )
+    group_members =  {col: df_file_attributes[col].unique() 
+                      for col in df_file_attributes.drop(columns=columns_to_drop, errors="ignore")}
 
     subgroups = {
         grouping: trackhub.SubGroupDefinition(
@@ -420,6 +417,7 @@ def make_hub(
             track_details=df_file_attributes,
             subgroup_definitions=subgroup_definitions,
             color_mapping=color_mapping,
+            color_by=color_by,
             custom_genome=custom_genome,
         )
 
