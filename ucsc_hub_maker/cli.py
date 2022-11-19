@@ -76,6 +76,18 @@ def get_ngs_pipeline_attributes(df_file_attributes: pd.DataFrame):
     multiple=True,
     default=("samplename", ),
 )
+@click.option(
+    "--group-overlay",
+    help="Attributes to use for a grouped overlay track",
+    multiple=True,
+    default=None,
+)
+@click.option(
+    "--group-composite",
+    help="Attributes to use for a grouped composite track",
+    multiple=True,
+    default=None,
+)
 def create_hub(files, **kwargs):
 
     if kwargs["mode"] == "capcruncher":
@@ -96,23 +108,6 @@ def create_hub(files, **kwargs):
             details=df_details,
             group_by="track_category",
             **{k: v for k, v in kwargs.items() if not k in ["files", "details", "group_by"]}
-        )
-
-    elif kwargs["mode"] == "ngs-pipeline":
-        df = get_file_attributes(files)
-        attributes = get_ngs_pipeline_attributes(df)
-        df_details = pd.concat(
-            [df.rename(columns={"basename": "filename"})
-             ["filename"], attributes],
-            axis=1,
-        ).set_index("filename")
-
-        make_hub(
-            files=files,
-            output=kwargs["output"],
-            details=df_details,
-            group_by="antibody" if "antibody" in df_details.columns else "samplename",
-            **kwargs
         )
 
     else:
