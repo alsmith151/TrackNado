@@ -49,15 +49,27 @@ def stage_hub(
             symlinks=False,
         )
 
+def get_grouping_columns(cols):
+    try:
+        if len(cols) > 1:
+            return cols
+        else:
+            return cols[0]
+    except IndexError:
+        return None
 
 def make_hub(
     files: Tuple,
     output: str,
     details: Union[str, pd.DataFrame],
-    group_composite: List[str] = None,
-    group_overlay: List[str] = None,
+    group_composite: Tuple[str] = None,
+    group_overlay: Tuple[str] = None,
     **kwargs,
 ):
+
+    # Set-up varibles
+    group_composite = get_grouping_columns(group_composite)
+    group_overlay = get_grouping_columns(group_overlay)
 
     # Get file attributes
     df_file_attributes = get_file_attributes(files)
@@ -141,14 +153,14 @@ def make_hub(
             )
     else:
         add_composite_tracks_to_container(
-                container=trackdb,
-                track_details=df_file_attributes,
-                subgroup_definitions=subgroup_definitions,
-                color_by=color_tracks_by,
-                color_mapping=color_mapping,
-                custom_genome=custom_genome,
-                hub=hub,
-            )
+            container=trackdb,
+            track_details=df_file_attributes,
+            subgroup_definitions=subgroup_definitions,
+            color_by=color_tracks_by,
+            color_mapping=color_mapping,
+            custom_genome=custom_genome,
+            hub=hub,
+        )
 
     if group_overlay:
         for group_name, df in df_file_attributes.groupby(group_overlay):
@@ -159,24 +171,25 @@ def make_hub(
                 supertracks[group_name] = trackhub.SuperTrack(name=group_name)
 
             add_overlay_track_to_container(
+                track_name=group_name,
                 container=supertracks[group_name],
                 track_details=df,
-                subgroup_definitions=subgroup_definitions,
                 color_by=color_tracks_by,
                 color_mapping=color_mapping,
-                track_suffix=group_name,
                 custom_genome=custom_genome,
                 hub=hub,
             )
 
             if not supertrack_exists:
                 add_hub_group(
-                    container=supertracks[group_name], hub=hub, custom_genome=custom_genome
+                    container=supertracks[group_name],
+                    hub=hub,
+                    custom_genome=custom_genome,
                 )
 
     trackdb.add_tracks(supertracks.values())
 
-    #Copy hub to the correct directory
+    # Copy hub to the correct directory
     stage_hub(
         hub=hub,
         genome=genome,
