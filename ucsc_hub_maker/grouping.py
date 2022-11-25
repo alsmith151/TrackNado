@@ -92,7 +92,7 @@ def add_composite_tracks_to_container(
             track_groupings = get_track_subgroups(track_file, subgroup_definitions)
 
             track = trackhub.Track(
-                name=f"{track_groupings}_{track_type}{'_' + track_suffix if track_suffix else ''}",
+                name=f"{track_name_base}_{track_type}{'_' + track_suffix if track_suffix else ''}",
                 shortLabel=" ".join(re.split(r"[.|_|\s+|-]", track_file.name)),
                 longLabel=" ".join(re.split(r"[.|_|\s+|-]", track_file.name)),
                 source=track_file.path,
