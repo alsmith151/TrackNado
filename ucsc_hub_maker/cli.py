@@ -71,6 +71,20 @@ def get_ngs_pipeline_attributes(df_file_attributes: pd.DataFrame):
     default="hg19",
 )
 @click.option(
+    "--custom-genome",
+    help="Determines if this is a custom genome",
+    is_flag=False,
+)
+@click.option(
+    "--genome-twobit",
+    help="Twobit file required for custom genome",
+)
+@click.option(
+    "--genome-organism",
+    help="Organism name required for custom genome",
+    default="NA",
+)
+@click.option(
     "--color-by",
     help="Name of column in details dataframe to use for track colors",
     multiple=True,
