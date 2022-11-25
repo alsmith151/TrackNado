@@ -124,5 +124,12 @@ def create_hub(files, **kwargs):
             **{k: v for k, v in kwargs.items() if not k in ["files", "details", "group_by"]}
         )
 
+    elif not kwargs["details"]:
+         df = get_file_attributes(files)
+         make_hub(
+            files=files,
+            details=df_details,
+            )
+
     else:
         make_hub(files, **kwargs)
