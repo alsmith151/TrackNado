@@ -61,7 +61,7 @@ def get_grouping_columns(cols):
 def make_hub(
     files: Tuple,
     output: str,
-    details: Union[str, pd.DataFrame],
+    details: Union[str, pd.DataFrame] = None,
     group_composite: Tuple[str] = None,
     group_overlay: Tuple[str] = None,
     **kwargs,
@@ -82,11 +82,14 @@ def make_hub(
     elif isinstance(details, pd.DataFrame):
         df_details = details
     else:
-        raise RuntimeError("File detail not provided")
+        df_details = pd.DataFrame()
+        # raise RuntimeError("File detail not provided")
 
-    df_file_attributes = get_groups_from_design_matrix(
-        df_file_attributes=df_file_attributes, df_design=df_details
-    )
+    if not df_details.empty:
+        df_file_attributes = get_groups_from_design_matrix(
+            df_file_attributes=df_file_attributes, df_design=df_details
+        )
+
 
     # Create hub
     hub = trackhub.Hub(

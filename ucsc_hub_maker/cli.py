@@ -128,7 +128,6 @@ def create_hub(files, **kwargs):
          df = get_file_attributes(files)
          make_hub(
             files=files,
-            details=df,
             **{kw:val for kw, val in kwargs.items() if not "details" in kw}
             )
 
