@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import trackhub
+import subprocess
 
 from .track import get_file_attributes, get_groups_from_design_matrix
 from .hub_setup import get_genome_file, make_track_palette
@@ -48,6 +49,10 @@ def stage_hub(
             dirs_exist_ok=True,
             symlinks=False,
         )
+
+        subprocess.run(["chmod", "2744", outdir, "-R"])
+
+        
 
 
 def get_grouping_columns(cols):
