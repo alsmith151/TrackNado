@@ -14,7 +14,7 @@ def get_genome_file(genome_name: str, custom_genome: bool = False, **kwargs):
             genome=genome_name,
             twobit_file=kwargs["genome_twobit"],
             organism=kwargs["genome_organism"],
-            defaultPos=kwargs.get("hub_default_position", "chr1:1000-2000"),
+            defaultPos=kwargs.get("hub_default_position", "chr1:10000-20000"),
         )
 
         groups_file = trackhub.GroupsFile(
