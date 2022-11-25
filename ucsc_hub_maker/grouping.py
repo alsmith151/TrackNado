@@ -62,14 +62,13 @@ def add_composite_tracks_to_container(
             "bigbed": "Peaks_or_Regions_of_Interest",
         }
 
-        #custom_genome_args = {"2bit": genome_twobit} if custom_genome else {}
 
         # Make composite for each file type
         composite = trackhub.CompositeTrack(
             name=f"{track_types.get(track_type.lower(), 'Tracks')}",
             short_label=f"{track_type}",
-            dimensions=" ".join([f"{k}={v}" for k, v in dimensions.items()]),
-            sortOrder=" ".join([f"{k}=+" for k in subgroup_definitions]),
+            dimensions=" ".join([f"{k}={v}" for k, v in dimensions.items()]) if dimensions else None,
+            sortOrder=" ".join([f"{k}=+" for k in subgroup_definitions]) if subgroup_definitions else None,
             tracktype=track_type,
             visibility="hide",
             dragAndDrop="subTracks",
