@@ -49,6 +49,7 @@ def stage_hub(
             symlinks=False,
         )
 
+
 def get_grouping_columns(cols):
     try:
         if len(cols) > 1:
@@ -57,6 +58,7 @@ def get_grouping_columns(cols):
             return cols[0]
     except IndexError:
         return None
+
 
 def make_hub(
     files: Tuple,
@@ -90,7 +92,6 @@ def make_hub(
             df_file_attributes=df_file_attributes, df_design=df_details
         )
 
-
     # Create hub
     hub = trackhub.Hub(
         hub=kwargs["hub_name"],
@@ -101,7 +102,7 @@ def make_hub(
 
     # Genome
     custom_genome = kwargs.get("custom_genome", False)
-    genome = get_genome_file(kwargs["genome_name"], custom_genome=custom_genome)
+    genome = get_genome_file(kwargs["genome_name"], custom_genome=custom_genome, **kwargs)
 
     # Create genomes file
     genomes_file = trackhub.GenomesFile()
