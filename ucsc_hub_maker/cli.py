@@ -129,7 +129,7 @@ def create_hub(files, **kwargs):
          make_hub(
             files=files,
             details=df,
-            **{kw:val for kw, val in kwargs if not "details" in kw}
+            **{kw:val for kw, val in kwargs if not "details" in kw.items()}
             )
 
     else:
