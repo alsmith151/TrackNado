@@ -73,7 +73,8 @@ def get_ngs_pipeline_attributes(df_file_attributes: pd.DataFrame):
 @click.option(
     "--custom-genome",
     help="Determines if this is a custom genome",
-    is_flag=False,
+    is_flag=True,
+    default=False,
 )
 @click.option(
     "--genome-twobit",
@@ -88,7 +89,7 @@ def get_ngs_pipeline_attributes(df_file_attributes: pd.DataFrame):
     "--color-by",
     help="Name of column in details dataframe to use for track colors",
     multiple=True,
-    default=("samplename", ),
+    default=("name", ),
 )
 @click.option(
     "--group-overlay",

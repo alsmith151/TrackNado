@@ -121,13 +121,9 @@ def make_hub(
     )
 
     color_tracks_by = list(
-        kwargs.get(
-            "color_by",
-            [
-                "sample_name",
-            ],
+        kwargs.get("color_by", ("name",))
         )
-    )
+
     color_mapping = make_track_palette(
         df_file_attributes=df_file_attributes,
         palette=kwargs.get("palette", "hls"),
@@ -151,6 +147,7 @@ def make_hub(
                 track_suffix=group_name,
                 custom_genome=custom_genome,
                 hub=hub,
+                genome_twobit=kwargs["genome_twobit"]
             )
             add_hub_group(
                 container=supertracks[group_name], hub=hub, custom_genome=custom_genome
@@ -164,6 +161,7 @@ def make_hub(
             color_mapping=color_mapping,
             custom_genome=custom_genome,
             hub=hub,
+            genome_twobit=kwargs["genome_twobit"],
         )
 
     if group_overlay:

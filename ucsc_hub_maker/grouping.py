@@ -47,6 +47,7 @@ def add_composite_tracks_to_container(
     color_mapping: Dict[str, Tuple[float, float, float]],
     track_suffix: str = "",
     custom_genome: bool = False,
+    genome_twobit: str = "",  
     hub: trackhub.Hub = None,
 ):
 
@@ -60,6 +61,8 @@ def add_composite_tracks_to_container(
             "bigwig": "Signal_Pileup",
             "bigbed": "Peaks_or_Regions_of_Interest",
         }
+
+        #custom_genome_args = {"2bit": genome_twobit} if custom_genome else {}
 
         # Make composite for each file type
         composite = trackhub.CompositeTrack(
