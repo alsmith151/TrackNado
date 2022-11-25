@@ -102,7 +102,7 @@ def make_hub(
 
     # Genome
     custom_genome = kwargs.get("custom_genome", False)
-    genome = get_genome_file(kwargs["genome_name"], custom_genome=custom_genome, **kwargs)
+    genome = get_genome_file(kwargs["genome_name"], **kwargs)
 
     # Create genomes file
     genomes_file = trackhub.GenomesFile()
