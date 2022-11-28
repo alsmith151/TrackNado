@@ -196,6 +196,16 @@ def make_hub(
 
     trackdb.add_tracks(supertracks.values())
 
+    ## Add generic tracks
+    for track in kwargs["generic_tracks"]:
+        track_name = trackhub.helpers.sanitize(os.path.basename(t))
+        track_path = os.path.abspath(track)
+        t = trackhub.Track(name=track_name, 
+                           source=track_path,
+                           tracktype=os.path.basename(track_name).split(".")[1])
+                           
+        trackdb.add_tracks(track)
+
     # Copy hub to the correct directory
     stage_hub(
         hub=hub,
