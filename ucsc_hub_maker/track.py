@@ -37,5 +37,5 @@ def get_track_subgroups(
     subgroup_definitions: Dict[str, trackhub.SubGroupDefinition],
 ):
     return "_".join(
-        [getattr(track_details, subgroup).lower() for subgroup in subgroup_definitions]
+        [str(getattr(track_details, subgroup)).lower() for subgroup in subgroup_definitions]
     )

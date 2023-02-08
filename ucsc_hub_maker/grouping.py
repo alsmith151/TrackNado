@@ -23,7 +23,7 @@ def get_subgroup_definitions(
         grouping: trackhub.SubGroupDefinition(
             name=grouping,
             label=grouping.capitalize(),
-            mapping={g.lower(): g for g in group},
+            mapping={str(g).lower(): g for g in group},
         )
         for grouping, group in group_members.items()
     }
@@ -65,7 +65,7 @@ def add_composite_tracks_to_container(
 
         # Make composite for each file type
         composite = trackhub.CompositeTrack(
-            name=f"{track_types.get(track_type.lower(), 'Tracks')}",
+            name=f"{track_types.get(str(track_type.lower()), 'Tracks')}",
             short_label=f"{track_type}",
             dimensions=" ".join([f"{k}={v}" for k, v in dimensions.items()]) if dimensions else None,
             sortOrder=" ".join([f"{k}=+" for k in subgroup_definitions]) if subgroup_definitions else None,
@@ -99,7 +99,7 @@ def add_composite_tracks_to_container(
                 tracktype=track_type,
                 windowingFunction="mean",
                 subgroups={
-                    subgroup: getattr(track_file, subgroup).lower()
+                    subgroup: str(getattr(track_file, subgroup)).lower()
                     for subgroup in subgroup_definitions
                 },
                 color=",".join(
