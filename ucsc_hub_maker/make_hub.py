@@ -50,7 +50,7 @@ def stage_hub(
             symlinks=False,
         )
 
-        subprocess.run(["chmod", "2744", outdir, "-R"])
+        subprocess.run(["chmod", "2755", outdir, "-R"])
 
         
 
