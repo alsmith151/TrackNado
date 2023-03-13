@@ -81,6 +81,7 @@ def make_hub(
     # Get file attributes
     df_file_attributes = get_file_attributes(files)
 
+
     # Design matrix in the format: filename samplename ATTRIBUTE_1 ATTRIBUTE_2 ...
     if isinstance(details, str):
         df_details = pd.read_csv(
@@ -128,7 +129,7 @@ def make_hub(
     color_tracks_by = list(
         kwargs.get("color_by", ("name",))
         )
-
+    
     color_mapping = make_track_palette(
         df_file_attributes=df_file_attributes,
         palette=kwargs.get("palette", "hls"),
