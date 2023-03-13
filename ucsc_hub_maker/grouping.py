@@ -2,6 +2,7 @@ import trackhub
 import pandas as pd
 from typing import Dict, Tuple
 import re
+import pathlib
 
 from .track import get_track_subgroups
 
@@ -86,8 +87,10 @@ def add_composite_tracks_to_container(
 
         # Add tracks to composite
         for track_file in df.itertuples():
+            
 
-            track_name_base = trackhub.helpers.sanitize(track_file.name)
+            path = pathlib.Path(track_file.path)
+            track_name_base = trackhub.helpers.sanitize(path.with_suffix("").name)
             track_groupings = get_track_subgroups(track_file, subgroup_definitions)
 
             track = trackhub.Track(
