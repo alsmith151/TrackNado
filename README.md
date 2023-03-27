@@ -1,6 +1,6 @@
 # UCSC Hub Maker
 
-This is a tools to quickly generate a UCSC hub from a set of files.
+Simple command line tool to quickly generate a UCSC hub from a set of files.
 
 ## Installation
 ```bash
