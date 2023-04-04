@@ -90,7 +90,7 @@ def add_composite_tracks_to_container(
             
 
             path = pathlib.Path(track_file.path)
-            track_name_base = trackhub.helpers.sanitize(path.with_suffix("").name)
+            track_name_base = trackhub.helpers.sanitize(track_file.name)
             track_groupings = get_track_subgroups(track_file, subgroup_definitions)
 
             track = trackhub.Track(

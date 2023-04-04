@@ -103,6 +103,17 @@ def get_ngs_pipeline_attributes(df_file_attributes: pd.DataFrame):
     multiple=True,
     default=None,
 )
+@click.option(
+    "--convert",
+    help="Convert files to UCSC compatible format",
+    is_flag=True,
+    default=False,
+)
+@click.option(
+    "--chrom-sizes",
+    help="Path to chrom.sizes file",
+    default=None,
+)
 def create_hub(files, **kwargs):
 
     if kwargs["mode"] == "capcruncher":

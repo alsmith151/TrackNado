@@ -51,9 +51,7 @@ def stage_hub(
         )
 
         subprocess.run(["chmod", "-R", "2755", outdir])
-
-        
-
+    
 
 def get_grouping_columns(cols):
     try:
@@ -79,8 +77,11 @@ def make_hub(
     group_overlay = get_grouping_columns(group_overlay)
 
     # Get file attributes
-    df_file_attributes = get_file_attributes(files)
-
+    df_file_attributes = get_file_attributes(
+        files,
+        convert=kwargs.get("convert", False),
+        chrom_sizes=kwargs.get("chrom_sizes", None),
+    )
 
     # Design matrix in the format: filename samplename ATTRIBUTE_1 ATTRIBUTE_2 ...
     if isinstance(details, str):
@@ -126,10 +127,8 @@ def make_hub(
         df_file_attributes=df_file_attributes, grouping_columns=group_composite
     )
 
-    color_tracks_by = list(
-        kwargs.get("color_by", ("name",))
-        )
-    
+    color_tracks_by = list(kwargs.get("color_by", ("name",)))
+
     color_mapping = make_track_palette(
         df_file_attributes=df_file_attributes,
         palette=kwargs.get("palette", "hls"),
@@ -153,7 +152,7 @@ def make_hub(
                 track_suffix=group_name,
                 custom_genome=custom_genome,
                 hub=hub,
-                genome_twobit=kwargs["genome_twobit"]
+                genome_twobit=kwargs["genome_twobit"],
             )
             add_hub_group(
                 container=supertracks[group_name], hub=hub, custom_genome=custom_genome
@@ -201,10 +200,12 @@ def make_hub(
     for track in kwargs["generic_tracks"]:
         track_name = trackhub.helpers.sanitize(os.path.basename(t))
         track_path = os.path.abspath(track)
-        t = trackhub.Track(name=track_name, 
-                           source=track_path,
-                           tracktype=os.path.basename(track_name).split(".")[1])
-                           
+        t = trackhub.Track(
+            name=track_name,
+            source=track_path,
+            tracktype=os.path.basename(track_name).split(".")[1],
+        )
+
         trackdb.add_tracks(track)
 
     # Copy hub to the correct directory
