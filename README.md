@@ -1,11 +1,11 @@
-# UCSC Hub Maker
+# Tracknado
 
 Simple command line tool to quickly generate a UCSC hub from a set of files.
 
 ## Installation
 ```bash
-git clone https://github.com/alsmith151/ucsc_hub_maker.git
-cd ucsc_hub_maker
+git clone https://github.com/alsmith151/Tracknado.git
+cd Tracknado
 pip install .
 ```
 
