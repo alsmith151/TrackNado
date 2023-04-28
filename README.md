@@ -14,7 +14,7 @@ pip install .
 See the help for more details on the options that can be provided.
 
 ```bash
-hubnado --help
+tracknado --help
 ```
 
 ## Example
@@ -22,7 +22,7 @@ hubnado --help
 ### Minimal example with no track details
 
 ```bash
-hubnado \
+tracknado \
 create \ 
 --hub-name HUB_NAME_HERE \
 --hub-email EMAIL_ADDRESS \
@@ -34,7 +34,7 @@ create \
 ### Example with track details
 
 ```bash
-hubnado \
+tracknado \
 create \
 --hub-name HUB_NAME_HERE \
 --hub-email EMAIL_ADDRESS \
@@ -46,7 +46,7 @@ create \
 ### Example with a custom genome
 
 ```bash
-hubnado \
+tracknado \
 create \
 --hub-name HUB_NAME_HERE \
 --hub-email EMAIL_ADDRESS \
@@ -59,7 +59,7 @@ create \
 
 ## Merging hubs
 
-It is possible to merge the outputs from hubnado create into a single hub by using the merge command. This requires that
+It is possible to merge the outputs from tracknado create into a single hub by using the merge command. This requires that
 hubs have been created with the --save-hub-design flag. This will create a file called hub_design.pkl in the output
 directory. This file contains all the information required to recreate the hub. This does require that the hubs are for the same
 genome.
@@ -67,7 +67,7 @@ genome.
 First create a couple of example hubs as above:
 
 ```bash
-hubnado \
+tracknado \
 create \
 --hub-name HUB_NAME_HERE \
 --hub-email EMAIL_ADDRESS \
@@ -78,7 +78,7 @@ create \
 ```
 
 ```bash
-hubnado \
+tracknado \
 create \
 --hub-name HUB_NAME_HERE \
 --hub-email EMAIL_ADDRESS \
@@ -92,7 +92,7 @@ create \
 Then merge them:
 
 ```bash
-hubnado \
+tracknado \
 merge \
 --hub-name HUB_NAME_HERE \
 --hub-email EMAIL_ADDRESS \

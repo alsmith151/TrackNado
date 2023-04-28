@@ -7,7 +7,7 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "hubnado"
+name = "tracknado"
 authors = [
     {name = "Alastair Smith", email = "alastair.smith@ndcls.ox.ac.uk"},]
 description = "CLI library to generate UCSC trackhubs from sequencing data"
@@ -26,10 +26,10 @@ dependencies = [
 ]
 
 [project.scripts]
-hubnado = "hubnado.cli:cli"
+tracknado = "tracknado.cli:cli"
 
 [tool.setuptools_scm]
-write_to = "hubnado/_version.py"
+write_to = "tracknado/_version.py"
 local_scheme = "no-local-version"
 
 [project.urls]
