@@ -1,6 +1,35 @@
 [build-system]
 requires = [
     "setuptools >= 61.0",
-    "wheel"
+    "wheel",
+    "setuptools_scm[toml]>=6.2",
 ]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "tracknado"
+authors = [
+    {name = "Alastair Smith", email = "alastair.smith@ndcls.ox.ac.uk"},]
+description = "CLI library to generate UCSC trackhubs from sequencing data"
+readme = "README.md"
+requires-python = ">=3.7"
+license = {text = "GNU GENERAL PUBLIC LICENSE Version 3"}
+dynamic = ["version"]
+dependencies = [
+    "click",
+    "pandas",
+    "cookiecutter",
+    "setuptools_scm",
+    "seaborn",
+    "trackhub",
+    "Pillow",
+]
+
+[project.scripts]
+tracknado = "tracknado.cli:cli"
+
+[tool.setuptools_scm]
+write_to = "tracknado/_version.py"
+local_scheme = "no-local-version"
+
+[project.urls]

@@ -14,39 +14,99 @@ pip install .
 See the help for more details on the options that can be provided.
 
 ```bash
-make-ucsc-hub --help
+tracknado --help
 ```
 
 ## Example
 
-### Minimal example
+### Minimal example with no track details
 
 ```bash
-make-ucsc-hub \
---hub-name 270123_PM_MA4_BP \
---hub-email alastair.smith@ndcls.ox.ac.uk \
+tracknado \
+create \ 
+--hub-name HUB_NAME_HERE \
+--hub-email EMAIL_ADDRESS \
 --genome-name hg38 \
--o /datashare/asmith/chipseq/270123_PM_MA4_BP \
-bigwigs/deeptools/*.bigWig \ # Files to be added to the hub
-peaks/lanceotron/*.bigBed # More files to be added to the hub
+-o /datashare/asmith/ \
+-i bigwigs/deeptools/*.bigWig peaks/lanceotron/*.bigBed
 ```
 
-### Example when providing details for tracks
-
-File details can be provided in a tab-separated file. The first line should be a header with the following columns: filename (full path to file) samplename (name for file; user defined).
-
-Any other columns can be added and these can be used for more elaborate grouping or coloring of tracks.
+### Example with track details
 
 ```bash
-make-ucsc-hub \
---hub-name 270123_PM_MA4_BP \
---hub-email
+tracknado \
+create \
+--hub-name HUB_NAME_HERE \
+--hub-email EMAIL_ADDRESS \
 --genome-name hg38 \
--o /datashare/asmith/chipseq/270123_PM_MA4_BP \
---track-details track_details.txt \
---color-by antibody \
-bigwigs/deeptools/*.bigWig \ # Files to be added to the hub
-peaks/lanceotron/*.bigBed # More files to be added to the hub
+-o /datashare/asmith/ \
+-d PATH_TO_TRACK_DETAILS_FILE \
 ```
+
+### Example with a custom genome
+
+```bash
+tracknado \
+create \
+--hub-name HUB_NAME_HERE \
+--hub-email EMAIL_ADDRESS \
+--genome-name CUSTOM_GENOME_NAME \
+--genome-organism CUSTOM_GENOME_ORGANISM \
+--genome-two-bit-path PATH_TO_TWO_BIT_FILE \
+-i bigwigs/deeptools/*.bigWig peaks/lanceotron/*.bigBed
+-o /datashare/asmith/ \
+```
+
+## Merging hubs
+
+It is possible to merge the outputs from tracknado create into a single hub by using the merge command. This requires that
+hubs have been created with the --save-hub-design flag. This will create a file called hub_design.pkl in the output
+directory. This file contains all the information required to recreate the hub. This does require that the hubs are for the same
+genome.
+
+First create a couple of example hubs as above:
+
+```bash
+tracknado \
+create \
+--hub-name HUB_NAME_HERE \
+--hub-email EMAIL_ADDRESS \
+--genome-name hg38 \
+-o /datashare/asmith/path1 \
+-i bigwigs/deeptools/*.bigWig peaks/lanceotron/*.bigBed \
+--save-hub-design
+```
+
+```bash
+tracknado \
+create \
+--hub-name HUB_NAME_HERE \
+--hub-email EMAIL_ADDRESS \
+--genome-name hg38 \
+-o /datashare/asmith/path2 \
+-i bigwigs/deeptools/*.bigWig peaks/lanceotron/*.bigBed \
+--save-hub-design
+```
+
+
+Then merge them:
+
+```bash
+tracknado \
+merge \
+--hub-name HUB_NAME_HERE \
+--hub-email EMAIL_ADDRESS \
+--genome-name hg38 \
+-o /datashare/asmith/merged \
+-i /datashare/asmith/path1/hub_design.pkl /datashare/asmith/path2/hub_design.pkl
+```
+
+This will create a new hub in /datashare/asmith/merged that contains all the tracks from the two input hubs. 
+You can also supply all of the standard arguments to the merge command to change the hub name, email, genome etc.
+
+
+
+
+
 
 
