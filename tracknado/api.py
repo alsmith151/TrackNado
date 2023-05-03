@@ -7,8 +7,10 @@ import subprocess
 import tempfile
 from collections import defaultdict, namedtuple
 from typing import Dict, List, Literal, Tuple, Union
+import hashlib
+import json
+from loguru import logger
 
-import numpy as np
 import pandas as pd
 import seaborn as sns
 import trackhub
@@ -27,8 +29,24 @@ def fix_duplicate_names(df: pd.DataFrame):
             df.loc[row.Index, "name"] = name
             df.loc[row.Index, "basename"] = basename
 
+def get_hash(obj: object) -> str:
+    """Get hash of object"""
+    return hashlib.md5(json.dumps(obj).encode("utf-8")).hexdigest()
 
-class HubFiles:
+def get_hash_for_df(df: pd.DataFrame, columns: Union[List[str], pd.Index] = None) -> List[str]:
+
+    if columns is None:
+        columns = df.columns
+    
+    hashes = []
+    for row in df.itertuples():
+        x = tuple([getattr(row, x) for x in columns])
+        hash = get_hash(x)
+        hashes.append(hash)
+    
+    return hashes
+
+class TrackFiles:
     def __init__(
         self,
         files: Union[List[str], List[pathlib.Path], pd.DataFrame],
@@ -160,7 +178,7 @@ class HubFiles:
 
         return df.join(df_attributes)
 
-class HubDesign:
+class TrackDesign:
     def __init__(
         self,
         details: pd.DataFrame,
@@ -191,8 +209,8 @@ class HubDesign:
         self._add_track_colors(color_by=color_by)
 
     @classmethod
-    def from_files(cls, files: List[pathlib.Path], **kwargs) -> "HubDesign":
-        hub_files = HubFiles(files, **kwargs)
+    def from_files(cls, files: List[pathlib.Path], **kwargs) -> "TrackDesign":
+        hub_files = TrackFiles(files, **kwargs)
 
         extra_kwargs = dict()
         if hub_files.subgroup_columns:
@@ -202,13 +220,13 @@ class HubDesign:
         return cls(hub_files.files, **kwargs, **extra_kwargs)
 
     @classmethod
-    def from_design(cls, design: pd.DataFrame, **kwargs) -> "HubDesign":
+    def from_design(cls, design: pd.DataFrame, **kwargs) -> "TrackDesign":
         design = design.copy()
-        design = HubFiles(design, **kwargs).files
+        design = TrackFiles(design, **kwargs).files
         return cls(design, **kwargs)
     
     @classmethod
-    def from_pickle(cls, pickle_file: pathlib.Path) -> "HubDesign":
+    def from_pickle(cls, pickle_file: pathlib.Path) -> "TrackDesign":
         with open(pickle_file, "rb") as f:
             return pickle.load(f)
 
@@ -347,8 +365,13 @@ class HubDesign:
 
             supertracks = dict()
             for grouping, df in self.details.groupby(self._supertrack_columns):
-                supertracks[grouping] = trackhub.SuperTrack(
-                    name="_".join(grouping),
+                
+                track_id = tuple(grouping) if not isinstance(grouping, str) else (grouping,)
+                track_name = "_".join(grouping)
+
+
+                supertracks[get_hash(track_id)] = trackhub.SuperTrack(
+                    name=track_name,
                 )
 
         else:
@@ -364,16 +387,15 @@ class HubDesign:
                 [c in self.details.columns for c in self._supertrack_columns]
             ), f"SuperTrack columns {self._supertrack_columns} missing"
 
-            self.details["supertrack"] = self.details[self._supertrack_columns].apply(
-                lambda row: "_".join(row), axis=1
-            )
+            self.details["supertrack"] = get_hash_for_df(self.details, self._supertrack_columns)
+    
 
     def _get_composite_tracks(self) -> Dict[str, trackhub.CompositeTrack]:
         """Generate a dictionary of CompositeTracks from the details dataframe"""
 
         composite_tracks = dict()
         if "supertrack" in self.details.columns:
-            for grouping, df in self.details.groupby(["supertrack", "ext"]):
+            for (supertrack, ext) , df in self.details.groupby(["supertrack", "ext"]):
 
                 subgroupings = df.iloc[df["subgroup_names"].drop_duplicates().index, :][
                     "subgroup_definition"
@@ -385,9 +407,12 @@ class HubDesign:
                     )
                 )
 
+                supertrack_name = self.super_tracks[get_hash(supertrack)].name
+                composite_name = "_".join([supertrack_name, ext])
+
                 composite = trackhub.CompositeTrack(
-                    name="_".join(grouping) if isinstance(grouping, tuple) else grouping,
-                    tracktype=grouping[1],
+                    name=composite_name,
+                    tracktype=ext,
                     dimensions=" ".join([f"{k}={v}" for k, v in dimensions.items()])
                     if dimensions
                     else None,
@@ -397,20 +422,20 @@ class HubDesign:
                     allButtonPair="off",
                 )
 
-                self.super_tracks[grouping[0]].add_tracks(composite)
-                composite_tracks[grouping] = composite
+                self.super_tracks[supertrack].add_tracks(composite)
+                composite_tracks[get_hash((supertrack, ext))] = composite
 
         elif self._subgroup_columns:
-            for grouping, df in self.details.groupby("ext"):
+            for ext, df in self.details.groupby("ext"):
                 composite = trackhub.CompositeTrack(
-                    name="_".join(grouping) if isinstance(grouping, tuple) else grouping,
-                    tracktype=grouping,
+                    name=ext,
+                    tracktype=ext,
                     visibility="hide",
                     dragAndDrop="subTracks",
                     allButtonPair="off",
                 )
 
-                composite_tracks[grouping] = composite
+                composite_tracks[get_hash((ext,))] = composite
         
         else:
             composite_tracks = dict()
@@ -424,8 +449,10 @@ class HubDesign:
             composite_columns = self._supertrack_columns if self._supertrack_columns else []
             composite_columns.append("ext")
 
-            self.details["composite"] = self.details.loc[:, composite_columns].apply(
-                lambda row: "_".join(row), axis=1
+            self.details["composite"] = get_hash_for_df(self.details, composite_columns)
+
+            assert self.details["composite"].isin(self.composite_tracks.keys()).all(), (
+                "Composite tracks not found in details dataframe"
             )
 
     def _get_overlay_tracks(self):
@@ -437,27 +464,36 @@ class HubDesign:
             ), f"Overlay columns {self._overlay_columns} missing"
 
             overlay_tracks = dict()
+            overlay_columns = list(self._overlay_columns) if not isinstance(self._overlay_columns, str) else [self._overlay_columns,]
 
             if "supertrack" in self.details.columns:
 
-                for grouping, df in self.details.groupby(
+                for (supertrack, overlay) , df in self.details.groupby(
                     ["supertrack", *self._overlay_columns]
                 ):
-                    overlay = trackhub.AggregateTrack(
+                    
+                    supertrack_name = self.super_tracks[supertrack].name
+                    overlay_name = "_".join([supertrack_name, *overlay])
+
+                    overlay_track = trackhub.AggregateTrack(
                         aggregate="transparentOverlay",
-                        name="_".join(grouping) if isinstance(grouping, tuple) else grouping,
+                        name=overlay_name,
                     )
 
-                    self.super_tracks[grouping[0]].add_tracks(overlay)
-                    overlay_tracks[grouping] = overlay
+                    self.super_tracks[supertrack].add_tracks(overlay)
+                    overlay_tracks[get_hash(tuple([supertrack, overlay]))] = overlay_track
 
             else:
-                for grouping, df in self.details.groupby(self._overlay_columns):
-                    overlay = trackhub.AggregateTrack(
+                for overlay, df in self.details.groupby(self._overlay_columns):
+
+                    overlay_name = "_".join(overlay) if isinstance(overlay, tuple) else overlay
+                    overlay_id = tuple(overlay) if isinstance(overlay, tuple) else (overlay,)
+
+                    overlay_track = trackhub.AggregateTrack(
                         aggregate="transparentOverlay",
-                        name="_".join(grouping) if isinstance(grouping, tuple) else grouping,
+                        name=overlay_name,
                     )
-                    overlay_tracks[grouping] = overlay
+                    overlay_tracks[get_hash(overlay_id)] = overlay_track
 
         else:
             overlay_tracks = dict()
@@ -474,14 +510,17 @@ class HubDesign:
             )
             overlay_columns.extend(self._overlay_columns)
 
-            self.details["overlay"] = self.details.loc[:, overlay_columns].apply(
-                lambda row: "_".join(row), axis=1
+            self.details["overlay"] = get_hash_for_df(self.details, overlay_columns)
+
+            assert self.details["overlay"].isin(self.overlay_tracks.keys()).all(), (
+                "Overlay tracks not found in details dataframe"
             )
+
 
     def __add__(self, other):
         """Combine two HubDesign objects"""
             
-        assert isinstance(other, HubDesign), "Can only combine HubDesign objects"
+        assert isinstance(other, TrackDesign), "Can only combine HubDesign objects"
 
         self.details = pd.concat([self.details, other.details], ignore_index=True)
         fix_duplicate_names(self.details)
@@ -519,7 +558,7 @@ class HubGenerator:
         self,
         hub_name: str,
         genome: str,
-        track_design: HubDesign,
+        track_design: TrackDesign,
         outdir: pathlib.Path,
         description_html: pathlib.Path = None,
         hub_email: str = "",
@@ -567,18 +606,23 @@ class HubGenerator:
             if hasattr(row, "composite"):
                 composite_track = self.track_design.composite_tracks[row.composite]
                 # Create a new track and add it as a subtrack to the composite track
-                track = self._get_track(row, suffix=f"_{row.composite}")
+                track = self._get_track(row, suffix=f"_{composite_track.name}")
                 composite_track.add_subtrack(track)
 
             # If the row has an "overlay" attribute
-            elif hasattr(row, "overlay"):
+            if hasattr(row, "overlay"):
                 overlay_track = self.track_design.overlay_tracks[row.overlay]
                 # Create a new track and add it to the overlay track
-                track = self._get_track(row, suffix=f"_{row.overlay}")
-                overlay_track.add_tracks(track)
+                track = self._get_track(row, suffix=f"_{overlay_track.name}")
+
+                # Ignore the track if it is not a signal track e.g. bigWig
+                if track.tracktype not in ["bigWig", ]:
+                    logger.warning(f"Track {track.name} is not a signal track and will be ignored for the overlay track {overlay_track.name}")
+                else:
+                    overlay_track.add_subtrack(track)
 
             # If the row doesn't have a "supertrack" attribute
-            elif not hasattr(row, "supertrack"):
+            if not hasattr(row, "supertrack"):
                 # Create a new track and add it to the trackdb
                 track = self._get_track(row)
                 self.trackdb.add_tracks(track)
@@ -595,6 +639,7 @@ class HubGenerator:
         else:
             tracks = [*self.track_design.composite_tracks.values(), *self.track_design.overlay_tracks.values()]
 
+        # Add the composite/overlay and supertracks to the trackdb
         for track in tracks:
             # Add group if custom genome
             if self.custom_genome:
