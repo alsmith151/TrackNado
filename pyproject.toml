@@ -23,6 +23,7 @@ dependencies = [
     "seaborn",
     "trackhub",
     "Pillow",
+    "loguru",
 ]
 
 [project.scripts]
