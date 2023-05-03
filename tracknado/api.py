@@ -389,7 +389,6 @@ class TrackDesign:
 
             self.details["supertrack"] = get_hash_for_df(self.details, self._supertrack_columns)
     
-
     def _get_composite_tracks(self) -> Dict[str, trackhub.CompositeTrack]:
         """Generate a dictionary of CompositeTracks from the details dataframe"""
 
@@ -473,7 +472,7 @@ class TrackDesign:
                 ):
                     
                     supertrack_name = self.super_tracks[supertrack].name
-                    overlay_name = "_".join([supertrack_name, *overlay])
+                    overlay_name = "_".join([supertrack_name, *overlay]) + "_overlay"
 
                     overlay_track = trackhub.AggregateTrack(
                         aggregate="transparentOverlay",
