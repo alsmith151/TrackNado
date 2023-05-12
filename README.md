@@ -4,9 +4,7 @@ Simple command line tool to quickly generate a UCSC hub from a set of files.
 
 ## Installation
 ```bash
-git clone https://github.com/alsmith151/Tracknado.git
-cd TrackNado
-pip install .
+pip install tracknado
 ```
 
 ## Usage
