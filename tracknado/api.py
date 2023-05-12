@@ -190,12 +190,13 @@ class TrackDesign:
     ):
 
         self.details = details
-        self._supertrack_columns = supergroup_by
-        self._overlay_columns = overlay_by
-        self._subgroup_columns = subgroup_by
-        self._color_columns = color_by
+        self._supertrack_columns = list(supergroup_by) if supergroup_by else list()
+        self._overlay_columns = list(overlay_by) if overlay_by else list()
+        self._subgroup_columns = list(subgroup_by) if subgroup_by else list()
+        self.subgroup_definitions = list() if subgroup_by else None
+        self._color_columns = list(color_by) if color_by else list()
 
-        self._add_subgroupings(supergroup_by=supergroup_by, subgroup_by=subgroup_by)
+        self._add_subgroupings(supergroup_by=self._supertrack_columns, subgroup_by=self._subgroup_columns)
 
         self.super_tracks = self._get_super_tracks()
         self._add_supertrack_indicators()
@@ -322,6 +323,9 @@ class TrackDesign:
             tuple([col for col in subgroup_by]) for i in range(df.shape[0])
         ]
         df["subgroup_definition"] = [subgroup_definitions for i in range(df.shape[0])]
+
+        self.subgroup_definitions.extend(subgroup_definitions)
+
         return df
 
     def _add_subgroupings(
@@ -346,7 +350,7 @@ class TrackDesign:
                 assert not any(
                     subgroup in supergroup_by for subgroup in subgroup_by
                 ), f"SubGroup columns {subgroup_by} cannot be in SuperGroup columns {supergroup_by}"
-
+          
                 self.details = self.details.groupby(supergroup_by).apply(
                     self._add_subgroup_definitions_to_df, subgroup_by=subgroup_by
                 )
@@ -366,8 +370,18 @@ class TrackDesign:
             supertracks = dict()
             for grouping, df in self.details.groupby(self._supertrack_columns):
                 
-                track_id = tuple(grouping) if not isinstance(grouping, str) else (grouping,)
-                track_name = "_".join(grouping)
+
+                if isinstance(grouping, str):
+                    track_id = (grouping,)
+                elif len(grouping) == 1:
+                    track_id = grouping
+                else:
+                    track_id = tuple(grouping)
+                
+                if len(track_id) == 1:
+                    track_name = track_id[0]
+                else:
+                    track_name = "_".join(track_id)
 
 
                 supertracks[get_hash(track_id)] = trackhub.SuperTrack(
@@ -395,19 +409,17 @@ class TrackDesign:
         composite_tracks = dict()
         if "supertrack" in self.details.columns:
             for (supertrack, ext) , df in self.details.groupby(["supertrack", "ext"]):
-
-                subgroupings = df.iloc[df["subgroup_names"].drop_duplicates().index, :][
-                    "subgroup_definition"
-                ]
+                
                 dimensions = dict(
                     zip(
                         [f"dim{d}" for d in ["X", "Y", "A", "B", "C", "D"]],
-                        subgroupings,
+                        self._subgroup_columns,
                     )
                 )
 
-                supertrack_name = self.super_tracks[get_hash(supertrack)].name
+                supertrack_name = self.super_tracks[supertrack].name
                 composite_name = "_".join([supertrack_name, ext])
+
 
                 composite = trackhub.CompositeTrack(
                     name=composite_name,
@@ -415,11 +427,13 @@ class TrackDesign:
                     dimensions=" ".join([f"{k}={v}" for k, v in dimensions.items()])
                     if dimensions
                     else None,
-                    sortOrder=" ".join([f"{k}=+" for k in subgroupings]),
+                    sortOrder=" ".join([f"{k}=+" for k in self._subgroup_columns]),
                     visibility="hide",
                     dragAndDrop="subTracks",
                     allButtonPair="off",
                 )
+
+                composite.add_subgroups(self.subgroup_definitions)
 
                 self.super_tracks[supertrack].add_tracks(composite)
                 composite_tracks[get_hash((supertrack, ext))] = composite
@@ -445,7 +459,7 @@ class TrackDesign:
         """Add a column to the details dataframe with a CompositeTrack indicator for each track"""
 
         if self.composite_tracks:
-            composite_columns = self._supertrack_columns if self._supertrack_columns else []
+            composite_columns = ["supertrack"] if self._supertrack_columns else []
             composite_columns.append("ext")
 
             self.details["composite"] = get_hash_for_df(self.details, composite_columns)
@@ -505,7 +519,7 @@ class TrackDesign:
         if self._overlay_columns:
 
             overlay_columns = (
-                self._supertrack_columns if self._supertrack_columns else []
+                ["supertrack"] if self._supertrack_columns else []
             )
             overlay_columns.extend(self._overlay_columns)
 
