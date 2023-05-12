@@ -1,5 +1,6 @@
 import os
 import click
+from typing import Literal, Union
 
 class OptionEatAll(click.Option):
 
@@ -51,6 +52,28 @@ def cli():
     Tracknado go BRRRR!
     """
 
+@cli.command()
+@click.option("-i", "--input-files", help="Input files", cls=OptionEatAll, type=list)
+@click.option("-o", "--output", help="Design name", required=True)
+@click.option(
+    "--preset",
+    help="Adjust design for specific use cases. Choose from: seqnado",
+    type=click.Choice(["seqnado"]),
+    default=None,
+)
+
+def design(input_files: list, output: str, preset: Union[None, Literal["seqnado"]]):
+
+    from tracknado.api import TrackFiles
+
+    tf = TrackFiles(input_files, infer_subgroups=True, infer_attributes=True)
+
+    if preset == "seqnado":
+        tf.files = tf.files.assign(experiment=lambda df: df["fn"].apply(lambda x: x.parent.parent.parent.name))
+
+    tf.files.to_csv(output)
+
+
 
 @cli.command()
 @click.option("-i", "--input-files", help="Input files", cls=OptionEatAll, type=tuple)
@@ -70,16 +93,19 @@ def cli():
     "--hub-name",
     help="Name of hub to generate",
     default="HUB",
+    required=True,
 )
 @click.option(
     "--hub-email",
     help="Email address for hub",
     default="alastair.smith@ndcls.ox.ac.uk",
+    required=True,
 )
 @click.option(
     "--genome-name",
     help="Name of genome",
     default="hg19",
+    required=True,
 )
 @click.option(
     "--custom-genome",
