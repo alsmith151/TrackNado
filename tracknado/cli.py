@@ -154,7 +154,7 @@ def design(input_files: list, output: str, preset: Union[None, Literal["seqnado"
     default=None,
 )
 @click.option(
-    "--convert",
+    "--convert-files",
     help="Convert files to UCSC compatible format",
     is_flag=True,
     default=False,
@@ -192,7 +192,7 @@ def create(*args, **kwargs):
     assign colors to the tracks. The colors will be assigned in the order that the values appear in
     the column unless colors are specified in the design file using the 'color' column.
 
-    The --convert option can be used to convert the input files to UCSC compatible format. This
+    The --convert-files option can be used to convert the input files to UCSC compatible format. This
     option is only available for bed files at this time. The files will be converted in the current
     working directory and the converted files will be used to generate the hub. The original files
     will be left in place.
