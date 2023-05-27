@@ -407,15 +407,16 @@ class TrackDesign:
         """Generate a dictionary of CompositeTracks from the details dataframe"""
 
         composite_tracks = dict()
-        if "supertrack" in self.details.columns:
-            for (supertrack, ext) , df in self.details.groupby(["supertrack", "ext"]):
-                
-                dimensions = dict(
+        dimensions = dict(
                     zip(
                         [f"dim{d}" for d in ["X", "Y", "A", "B", "C", "D"]],
                         self._subgroup_columns,
                     )
                 )
+        
+        if "supertrack" in self.details.columns:
+            for (supertrack, ext) , df in self.details.groupby(["supertrack", "ext"]):
+                
 
                 supertrack_name = self.super_tracks[supertrack].name
                 composite_name = "_".join([supertrack_name, ext])
@@ -446,8 +447,13 @@ class TrackDesign:
                     visibility="hide",
                     dragAndDrop="subTracks",
                     allButtonPair="off",
+                    dimensions=" ".join([f"{k}={v}" for k, v in dimensions.items()])
+                    if dimensions
+                    else None,
+                    sortOrder=" ".join([f"{k}=+" for k in self._subgroup_columns]),
                 )
 
+                composite.add_subgroups(self.subgroup_definitions)
                 composite_tracks[get_hash((ext,))] = composite
         
         else:
@@ -615,8 +621,12 @@ class HubGenerator:
         
         for row in self.track_design.details.itertuples():
 
+            has_composite = False
+            has_overlay = False
+
             # If the row has a "composite" attribute
             if hasattr(row, "composite"):
+                has_composite = True
                 composite_track = self.track_design.composite_tracks[row.composite]
                 # Create a new track and add it as a subtrack to the composite track
                 track = self._get_track(row, suffix=f"_{composite_track.name}")
@@ -624,6 +634,7 @@ class HubGenerator:
 
             # If the row has an "overlay" attribute
             if hasattr(row, "overlay"):
+                has_overlay = True
                 overlay_track = self.track_design.overlay_tracks[row.overlay]
                 # Create a new track and add it to the overlay track
                 track = self._get_track(row, suffix=f"_{overlay_track.name}")
@@ -635,7 +646,7 @@ class HubGenerator:
                     overlay_track.add_subtrack(track)
 
             # If the row doesn't have a "supertrack" attribute
-            if not hasattr(row, "supertrack"):
+            if not hasattr(row, "supertrack") and not has_composite and not has_overlay:
                 # Create a new track and add it to the trackdb
                 track = self._get_track(row)
                 self.trackdb.add_tracks(track)
@@ -653,7 +664,7 @@ class HubGenerator:
             tracks = [*self.track_design.composite_tracks.values(), *self.track_design.overlay_tracks.values()]
 
         # Add the composite/overlay and supertracks to the trackdb
-        for track in tracks:
+        for ii, track in enumerate(tracks):
             # Add group if custom genome
             if self.custom_genome:
                 track.add_params(group=self._hub.hub)
