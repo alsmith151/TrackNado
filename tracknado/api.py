@@ -368,7 +368,7 @@ class TrackDesign:
             ), f"SuperTrack columns {self._supertrack_columns} missing"
 
             supertracks = dict()
-            for grouping, df in self.details.groupby(self._supertrack_columns):
+            for grouping, df in self.details.reset_index(drop=True).groupby(self._supertrack_columns, as_index=False):
                 
 
                 if isinstance(grouping, str):
@@ -492,14 +492,18 @@ class TrackDesign:
                 ):
                     
                     supertrack_name = self.super_tracks[supertrack].name
-                    overlay_name = "_".join([supertrack_name, *overlay]) + "_overlay"
+
+                    if isinstance(overlay, str):
+                        overlay_name = "_".join([supertrack_name, overlay]) + "_overlay"
+                    else:
+                        overlay_name = "_".join([supertrack_name, *overlay]) + "_overlay"
 
                     overlay_track = trackhub.AggregateTrack(
                         aggregate="transparentOverlay",
                         name=overlay_name,
                     )
 
-                    self.super_tracks[supertrack].add_tracks(overlay)
+                    self.super_tracks[supertrack].add_tracks(overlay_track)
                     overlay_tracks[get_hash(tuple([supertrack, overlay]))] = overlay_track
 
             else:
