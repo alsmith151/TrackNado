@@ -6,17 +6,12 @@ import shutil
 import subprocess
 import tempfile
 from collections import defaultdict, namedtuple
-from typing import Dict, List, Literal, Tuple, Union
+from typing import Dict, List, Union
 import hashlib
 import json
 from loguru import logger
-
 import pandas as pd
-import seaborn as sns
 import trackhub
-
-from tracknado.utils import has_valid_chromsizes, has_tracks_to_convert
-
 
 def fix_duplicate_names(df: pd.DataFrame):
     duplicate_counts = defaultdict(int)
@@ -55,6 +50,7 @@ class TrackFiles:
         deduplicate: bool = False,
         convert_files: bool = False,
         chromosome_sizes: Union[pathlib.Path, str] = "",
+        convert_extensions: bool = True,
         **kwargs,
     ) -> None:
 
@@ -88,10 +84,29 @@ class TrackFiles:
             df = pd.Series(files).to_frame("fn")
 
         paths = [pathlib.Path(fn) for fn in df["fn"].values]
-        df["path"] = [str(p.absolute().resolve()) for p in paths]
-        df["basename"] = [p.name for p in paths]
-        df["name"] = [p.stem for p in paths]
-        df["ext"] = [p.suffix.strip(".") for p in paths]
+
+        if not "path" in df.columns:
+            df["path"] = [str(p.absolute().resolve()) for p in paths]
+        
+        if not "basename" in df.columns:
+            df["basename"] = [p.name for p in paths]
+        
+        if not "name" in df.columns:
+            df["name"] = [p.stem for p in paths]
+        
+        if not "ext" in df.columns:
+            df["ext"] = [p.suffix.strip(".") for p in paths]
+
+
+        extension_mapping = {
+            "bw": "bigWig",
+            "bb": "bigBed",
+            "bigbed": "bigBed",
+            "bigwig": "bigWig",
+        }
+
+        df["ext"] = df["ext"].replace(extension_mapping)
+
         return df
 
     def infer_subgroup_columns(self) -> List[str]:
@@ -115,6 +130,7 @@ class TrackFiles:
     ) -> None:
         """Convert tracks to UCSC format"""
 
+        from tracknado.utils import has_valid_chromsizes, has_tracks_to_convert
 
         if has_tracks_to_convert(self.files):
 
@@ -177,6 +193,17 @@ class TrackFiles:
         df_attributes = df_attributes.loc[:, df_attributes.notnull().any()]
 
         return df.join(df_attributes)
+    
+    def __add__(self, other):
+        """Combine two TrackFiles objects"""
+            
+        assert isinstance(other, TrackFiles), "Can only combine TrackFiles objects"
+
+        files = pd.concat([self.files, other.files], ignore_index=True)
+        files = files.drop_duplicates(subset=["path"])
+        files = files.reset_index(drop=True)
+
+        return TrackFiles(files)
 
 class TrackDesign:
     def __init__(
@@ -250,6 +277,7 @@ class TrackDesign:
 
             try:
                 # Get a pallette with enough colors for the unique groups in the details
+                import seaborn as sns
                 n_colors = len(self.details[color_by].drop_duplicates())
                 colors = sns.color_palette(pallet, n_colors=n_colors).as_hex()  # type: ignore
 

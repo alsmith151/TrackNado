@@ -1,6 +1,7 @@
 import os
 import click
 from typing import Literal, Union
+from loguru import logger
 
 class OptionEatAll(click.Option):
 
@@ -164,6 +165,8 @@ def design(input_files: list, output: str, preset: Union[None, Literal["seqnado"
     help="Path to chrom.sizes file",
     default=None,
 )
+@click.option("--url-prefix", help="URL prefix for the hub", default="https://userweb.molbiol.ox.ac.uk")
+
 def create(*args, **kwargs):
 
     """Create a UCSC track hub from a set of files
@@ -178,7 +181,7 @@ def create(*args, **kwargs):
     File attributes can be inferred from the filenames using the --infer-details option. This
     option requires that the filenames are in the format SAMPLENAME_[ANTIBODY]_[REPLICATE].
     The attributes will be inferred from the filename and the following columns will be added
-    to the design file (if they are present): 'sample', 'antibody', 'replicate'.
+    to the design file (if they are present): 'sample_name', 'antibody', 'replicate'.
     
     The --supergroup-by, --subgroup-by, --composite-by, and --overlay-by options can be used to specify
     columns in the design file that will be used to group the files into tracks. The columns can be
@@ -207,6 +210,7 @@ def create(*args, **kwargs):
     """
 
     # sys.tracebacklimit = 0
+    logger.info("Initialising tracknado")
     import pandas as pd
     from tracknado.api import TrackDesign, HubGenerator
 
@@ -215,6 +219,7 @@ def create(*args, **kwargs):
 
 
     # Get design
+    logger.info("Obtaining track design")
     if not kwargs["details"]:
         assert kwargs[
             "input_files"
@@ -242,6 +247,7 @@ def create(*args, **kwargs):
         )
 
 
+    logger.info("Generating hub")
     hub = HubGenerator(
         outdir=kwargs["output"],
         track_design=design,
@@ -254,10 +260,16 @@ def create(*args, **kwargs):
         description_html=kwargs["description_html"],
     )
 
+    logger.info("Staging hub (copying files to output directory)")
     hub.stage_hub()
 
     if kwargs["save_hub_design"]:
         design.to_pickle(kwargs["save_hub_design"])
+
+    logger.info("Hub created successfully")
+    logger.info(f"Hub directory: {kwargs['output']}")
+    logger.info(f"Hub URL: {kwargs['url_prefix'].strip('/')}/{kwargs['output'].strip('/')}/{kwargs['hub_name']}.hub.txt")
+    
     
 
 
