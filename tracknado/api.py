@@ -459,7 +459,6 @@ class TrackDesign:
                     sortOrder=" ".join([f"{k}=+" for k in self._subgroup_columns]),
                     visibility="hide",
                     dragAndDrop="subTracks",
-                    allButtonPair="off",
                 )
 
                 composite.add_subgroups(self.subgroup_definitions)
@@ -474,7 +473,6 @@ class TrackDesign:
                     tracktype=ext,
                     visibility="hide",
                     dragAndDrop="subTracks",
-                    allButtonPair="off",
                     dimensions=" ".join([f"{k}={v}" for k, v in dimensions.items()])
                     if dimensions
                     else None,
@@ -529,6 +527,7 @@ class TrackDesign:
                     overlay_track = trackhub.AggregateTrack(
                         aggregate="transparentOverlay",
                         name=overlay_name,
+                        tracktype="bigWig",
                     )
 
                     self.super_tracks[supertrack].add_tracks(overlay_track)
@@ -543,6 +542,7 @@ class TrackDesign:
                     overlay_track = trackhub.AggregateTrack(
                         aggregate="transparentOverlay",
                         name=overlay_name,
+                        tracktype="bigWig",
                     )
                     overlay_tracks[get_hash(overlay_id)] = overlay_track
 
