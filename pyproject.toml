@@ -6,6 +6,9 @@ requires = [
 ]
 build-backend = "setuptools.build_meta"
 
+[tool.setuptools.packages.find]
+include = ["tracknado*"]
+
 [project]
 name = "tracknado"
 authors = [
@@ -24,7 +27,17 @@ dependencies = [
     "trackhub",
     "Pillow",
     "loguru",
+    "pydantic>=2.0",
+    "pandera>=0.18",
 ]
+
+[project.optional-dependencies]
+docs = [
+    "mkdocs",
+    "mkdocs-material",
+    "mkdocstrings[python]",
+]
+
 
 [project.scripts]
 tracknado = "tracknado.cli:cli"
