@@ -1,377 +1,241 @@
+from __future__ import annotations
 import os
-import click
-from typing import Literal, Union
+import pathlib
+from typing import List, Optional
 from loguru import logger
+import pandas as pd
+import typer
+from rich.console import Console
+from rich.logging import RichHandler
 
-class OptionEatAll(click.Option):
+import tracknado as tn
 
-    def __init__(self, *args, **kwargs):
-        self.save_other_options = kwargs.pop('save_other_options', True)
-        nargs = kwargs.pop('nargs', -1)
-        assert nargs == -1, 'nargs, if set, must be -1 not {}'.format(nargs)
-        super(OptionEatAll, self).__init__(*args, **kwargs)
-        self._previous_parser_process = None
-        self._eat_all_parser = None
+app = typer.Typer(help="TrackNado: Generate UCSC track hubs with ease. TrackNado go BRRRR!")
+console = Console()
 
-    def add_to_parser(self, parser, ctx):
+@app.command()
+def create(
+    input_files: Optional[List[pathlib.Path]] = typer.Option(
+        None, "--input-files", "-i", help="A list of local track files (bigWig, bigBed, BAM, etc.) to include in the hub."
+    ),
+    output: Optional[pathlib.Path] = typer.Option(
+        None, "--output", "-o", help="The directory where the staged hub and tracknado_config.json will be created."
+    ),
+    metadata: Optional[pathlib.Path] = typer.Option(
+        None, "--metadata", "-m", help="Path to a CSV/TSV containing track metadata. Must include a 'fn' column with file paths."
+    ),
+    seqnado: bool = typer.Option(
+        False, "--seqnado", help="Automatically extract sample metadata using the seqnado directory structure convention."
+    ),
+    hub_name: str = typer.Option(
+        "HUB", "--hub-name", help="The short identifier for the hub (used in UCSC URL)."
+    ),
+    hub_email: str = typer.Option(
+        "alastair.smith@ndcls.ox.ac.uk", "--hub-email", help="Contact email displayed on the hub's description page."
+    ),
+    genome_name: str = typer.Option(
+        "hg38", "--genome-name", help="The genome assembly ID (e.g., hg38, mm10). For custom genomes, use this as the assembly name."
+    ),
+    color_by: Optional[str] = typer.Option(
+        None, "--color-by", help="The metadata column name to use for determining track colors."
+    ),
+    supergroup_by: Optional[List[str]] = typer.Option(
+        None, "--supergroup-by", help="One or more metadata columns to use for top-level track grouping (SuperTracks)."
+    ),
+    subgroup_by: Optional[List[str]] = typer.Option(
+        None, "--subgroup-by", help="Metadata columns to define multi-dimensional CompositeTracks (matrix display)."
+    ),
+    overlay_by: Optional[List[str]] = typer.Option(
+        None, "--overlay-by", help="Metadata columns to define OverlayTracks (e.g., multi-signal plots)."
+    ),
+    url_prefix: str = typer.Option(
+        "https://userweb.molbiol.ox.ac.uk", "--url-prefix", help="Base URL where the hub will be hosted (used for final URL reporting)."
+    ),
+    convert: bool = typer.Option(
+        False, "--convert", help="Enable automatic conversion of formats like BED -> bigBed or GTF -> bigGenePred."
+    ),
+    chrom_sizes: Optional[pathlib.Path] = typer.Option(
+        None, "--chrom-sizes", help="Required for --convert. Path to a chrom.sizes file for the target genome."
+    ),
+    custom_genome: bool = typer.Option(
+        False, "--custom-genome", help="Flag to indicate an Assembly Hub (custom genome) rather than a built-in UCSC genome."
+    ),
+    twobit: Optional[pathlib.Path] = typer.Option(
+        None, "--twobit", help="Required for custom genomes. Path to the .2bit file containing the genome sequence."
+    ),
+    organism: Optional[str] = typer.Option(
+        None, "--organism", help="Required for custom genomes. Common name of the organism (e.g., 'Human', 'Mouse')."
+    ),
+    default_pos: str = typer.Option(
+        "chr1:10000-20000", "--default-pos", help="Set the initial viewing coordinates for the hub."
+    ),
+    description: Optional[pathlib.Path] = typer.Option(
+        None, "--description", help="Path to an HTML file to display as the hub's landing page/documentation."
+    ),
+    template: Optional[pathlib.Path] = typer.Option(
+        None, "--template", "-t", help="Create a template metadata file at the specified path and exit."
+    ),
+):
+    """Create a UCSC track hub from a set of files."""
+    if template:
+        df = pd.DataFrame(columns=["fn", "name", "track_type", "color", "supertrack", "composite", "overlay"])
+        df.to_csv(template, index=False)
+        logger.info(f"Created template metadata file at {template}")
+        raise typer.Exit()
 
-        def parser_process(value, state):
-            # method to hook to the parser.process
-            done = False
-            value = [value]
-            if self.save_other_options:
-                # grab everything up to the next option
-                while state.rargs and not done:
-                    for prefix in self._eat_all_parser.prefixes:
-                        if state.rargs[0].startswith(prefix):
-                            done = True
-                    if not done:
-                        value.append(state.rargs.pop(0))
-            else:
-                # grab everything remaining
-                value += state.rargs
-                state.rargs[:] = []
-            value = tuple(value)
+    if not output:
+        console.print("[red]Error: Missing option '--output' / '-o'.[/red]")
+        raise typer.Exit(code=1)
 
-            # call the actual process
-            self._previous_parser_process(value, state)
-
-        retval = super(OptionEatAll, self).add_to_parser(parser, ctx)
-        for name in self.opts:
-            our_parser = parser._long_opt.get(name) or parser._short_opt.get(name)
-            if our_parser:
-                self._eat_all_parser = our_parser
-                self._previous_parser_process = our_parser.process
-                our_parser.process = parser_process
-                break
-        return retval
-
-
-@click.group()
-def cli():
-    """Tracknado: A tool for generating UCSC track hubs
-    Tracknado go BRRRR!
-    """
-
-@cli.command()
-@click.option("-i", "--input-files", help="Input files", cls=OptionEatAll, type=list)
-@click.option("-o", "--output", help="Design name", required=True)
-@click.option(
-    "--preset",
-    help="Adjust design for specific use cases. Choose from: seqnado",
-    type=click.Choice(["seqnado"]),
-    default=None,
-)
-
-def design(input_files: list, output: str, preset: Union[None, Literal["seqnado"]]):
-
-    from tracknado.api import TrackFiles
-
-    tf = TrackFiles(input_files, infer_subgroups=True, infer_attributes=True)
-
-    if preset == "seqnado":
-        tf.files = tf.files.assign(experiment=lambda df: df["fn"].apply(lambda x: x.parent.parent.parent.name))
-
-    tf.files.to_csv(output)
-
-
-
-@cli.command()
-@click.option("-i", "--input-files", help="Input files", cls=OptionEatAll, type=tuple)
-@click.option("-o", "--output", help="Hub output directory", required=True)
-@click.option("--save-hub-design", help="Save hub design to file", type=str)
-@click.option(
-    "-d",
-    "--details",
-    help="Extra details for each file. MUST contain: 'fn' column",
-)
-@click.option(
-    "--infer-details",
-    help="Infer details from filenames. Requires SAMPLENAME_[ANTIBODY]_[REPLICATE]",
-    is_flag=True,
-)
-@click.option(
-    "--hub-name",
-    help="Name of hub to generate",
-    default="HUB",
-    required=True,
-)
-@click.option(
-    "--hub-email",
-    help="Email address for hub",
-    default="alastair.smith@ndcls.ox.ac.uk",
-    required=True,
-)
-@click.option(
-    "--genome-name",
-    help="Name of genome",
-    default="hg19",
-    required=True,
-)
-@click.option(
-    "--custom-genome",
-    help="Determines if this is a custom genome",
-    is_flag=True,
-    default=False,
-)
-@click.option(
-    "--genome-twobit",
-    help="Twobit file required for custom genome",
-)
-@click.option(
-    "--genome-organism",
-    help="Organism name required for custom genome",
-    default="NA",
-)
-@click.option(
-    "--color-by",
-    help="Name of column in details dataframe to use for track colors",
-    multiple=True,
-    default=None,
-)
-@click.option("--description-html", help="Path to HTML file with hub description")
-@click.option(
-    "--supergroup-by",
-    help="Column(s) defining supertracks",
-    multiple=True,
-    default=None,
-)
-@click.option(
-    "--subgroup-by",
-    help="Column(s) defining subgroupings for composite tracks. If any value is provided a composite track will be generated for each filetype",
-    multiple=True,
-    default=None,
-)
-@click.option(
-    "--composite-by",
-    help="Column(s) defining composite tracks.",
-    multiple=True,
-    default=None,
-)
-@click.option(
-    "--overlay-by",
-    help="Column(s) defining overlay tracks",
-    multiple=True,
-    default=None,
-)
-@click.option(
-    "--convert-files",
-    help="Convert files to UCSC compatible format",
-    is_flag=True,
-    default=False,
-)
-@click.option(
-    "--chrom-sizes",
-    help="Path to chrom.sizes file",
-    default=None,
-)
-@click.option("--url-prefix", help="URL prefix for the hub", default="https://userweb.molbiol.ox.ac.uk")
-
-def create(*args, **kwargs):
-
-    """Create a UCSC track hub from a set of files
-
-    The options provided will determine how the files are grouped into tracks and
-    supertracks. 
-
-    There are two ways to provide the files to be included in the hub. The first is to provide
-    a list of files using the --input-files option. The second is to provide a design file using
-    the --details option.
-
-    File attributes can be inferred from the filenames using the --infer-details option. This
-    option requires that the filenames are in the format SAMPLENAME_[ANTIBODY]_[REPLICATE].
-    The attributes will be inferred from the filename and the following columns will be added
-    to the design file (if they are present): 'sample_name', 'antibody', 'replicate'.
+    logger.info("Initializing TrackNado")
     
-    The --supergroup-by, --subgroup-by, --composite-by, and --overlay-by options can be used to specify
-    columns in the design file that will be used to group the files into tracks. The columns can be
-    specified multiple times to group by multiple columns. For example, if the design file contains
-    columns 'sample', 'antibody', and 'replicate' then the following options will group the files
-    into supertracks by sample, then subtracks by antibody, then composite tracks by replicate:
-
-    --supergroup-by sample --subgroup-by antibody --composite-by replicate
-
-    The --color-by option can be used to specify a column in the design file that will be used to
-    assign colors to the tracks. The colors will be assigned in the order that the values appear in
-    the column unless colors are specified in the design file using the 'color' column.
-
-    The --convert-files option can be used to convert the input files to UCSC compatible format. This
-    option is only available for bed files at this time. The files will be converted in the current
-    working directory and the converted files will be used to generate the hub. The original files
-    will be left in place.
-
-    A custom genome can be specified using the --custom-genome option. This option requires that
-    the --genome-twobit and --genome-organism options are also provided.
-
-    The --description-html option can be used to provide a path to an HTML file that will be used
-    as the hub description. The HTML file will be copied to the hub directory and the path to the
-    file will be added to the hub.txt file.
-
-    """
-
-    # sys.tracebacklimit = 0
-    logger.info("Initialising tracknado")
-    import pandas as pd
-    from tracknado.api import TrackDesign, HubGenerator
-
-    # Fix cli to api differences
-    kwargs["color_by"] = kwargs["color_by"][0] if kwargs["color_by"] else None
-
-
-    # Get design
-    logger.info("Obtaining track design")
-    if not kwargs["details"]:
-        assert kwargs[
-            "input_files"
-        ], "Input file MUST be provided if not specifying by a design file"
-
-        kwargs.pop("details")
-
-        design = TrackDesign.from_files(
-            kwargs["input_files"],
-            infer_attributes=kwargs["infer_details"],
-            chromosome_sizes=kwargs["chrom_sizes"],
-            **kwargs
-        )
-
+    builder = tn.HubBuilder()
+    builder.convert_files = convert
+    builder.chrom_sizes = chrom_sizes
+    
+    # 1. Add tracks
+    if metadata:
+        logger.info(f"Loading metadata from {metadata}")
+        df = pd.read_csv(metadata, sep=None, engine="python")
+        builder.add_tracks_from_df(df)
+    elif input_files:
+        logger.info(f"Adding {len(input_files)} input files")
+        builder.add_tracks(input_files)
     else:
-        details = pd.read_csv(kwargs["details"], sep=r"\s+|\t|,", engine="python")
-        kwargs.pop("input_files")
-        kwargs.pop("details")
-
-        design = TrackDesign.from_design(
-            details,
-            infer_attributes=kwargs["infer_details"],
-            chromosome_sizes=kwargs["chrom_sizes"],
-            **kwargs
-        )
-
-
-    logger.info("Generating hub")
-    hub = HubGenerator(
-        outdir=kwargs["output"],
-        track_design=design,
-        genome=kwargs["genome_name"],
-        hub_name=kwargs["hub_name"],
-        hub_email=kwargs["hub_email"],
-        custom_genome=kwargs["custom_genome"],
-        genome_twobit=kwargs["genome_twobit"],
-        genome_organism=kwargs["genome_organism"],
-        description_html=kwargs["description_html"],
-    )
-
-    logger.info("Staging hub (copying files to output directory)")
-    hub.stage_hub()
-
-    if kwargs["save_hub_design"]:
-        design.to_pickle(kwargs["save_hub_design"])
-
-    logger.info("Hub created successfully")
-    logger.info(f"Hub directory: {kwargs['output']}")
-    logger.info(f"Hub URL: {kwargs['url_prefix'].strip('/')}/{kwargs['output'].strip('/')}/{kwargs['hub_name']}.hub.txt")
-    
-    
-
-
-
-@cli.command()
-@click.option("-i", "--input-files", help="Input files", cls=OptionEatAll, type=tuple)
-@click.option("-o", "--output", help="Hub output directory", required=True)
-@click.option(
-    "--hub-name",
-    help="Name of hub to generate",
-    default="HUB",
-)
-@click.option(
-    "--hub-email",
-    help="Email address for hub",
-    default="alastair.smith@ndcls.ox.ac.uk",
-)
-@click.option(
-    "--genome-name",
-    help="Name of genome",
-    default="hg19",
-)
-@click.option(
-    "--custom-genome",
-    help="Determines if this is a custom genome",
-    is_flag=True,
-    default=False,
-)
-@click.option(
-    "--genome-twobit",
-    help="Twobit file required for custom genome",
-)
-@click.option(
-    "--genome-organism",
-    help="Organism name required for custom genome",
-    default="NA",
-)
-@click.option(
-    "--color-by",
-    help="Name of column in details dataframe to use for track colors",
-    multiple=True,
-    default=None,
-    type=list
-)
-@click.option("--description-html", help="Path to HTML file with hub description")
-@click.option(
-    "--supergroup-by",
-    help="Column(s) defining supertracks",
-    multiple=True,
-    default=None,
-)
-@click.option(
-    "--subgroup-by",
-    help="Column(s) defining subgroupings for composite tracks. If any value is provided a composite track will be generated for each filetype",
-    multiple=True,
-    default=None,
-)
-@click.option(
-    "--composite-by",
-    help="Column(s) defining composite tracks.",
-    multiple=True,
-    default=None,
-)
-@click.option(
-    "--overlay-by",
-    help="Column(s) defining overlay tracks",
-    multiple=True,
-    default=None,
-)
-def merge(*args, **kwargs):
-    """Merge multiple seqnado created hubs into a single hub.
-    
-    This command will merge multiple seqnado created hubs into a single hub. 
-    
-    This requires that the hubs were created with the tracknado create command and that the hub designs were saved using the --save-hub-design option.
-    """
-
-    assert all(os.path.exists(hub) for hub in kwargs["input_files"]), "All input files must exist"
-
-    import pandas as pd
-    from tracknado.api import TrackDesign, HubGenerator
-
-    for ii, hub in enumerate(kwargs["input_files"]):
-        if ii == 0:
-            design = TrackDesign.from_pickle(hub)
-        else:
-            design = design + TrackDesign.from_pickle(hub) # type: ignore
+        console.print("[red]Error: Must provide --input-files or --metadata[/red]")
+        raise typer.Exit(code=1)
         
-
-    hub = HubGenerator(
-        outdir=kwargs["output"],
-        track_design=design, # type: ignore
-        genome=kwargs["genome_name"],
-        hub_name=kwargs["hub_name"],
-        hub_email=kwargs["hub_email"],
-        custom_genome=kwargs["custom_genome"],
-        genome_twobit=kwargs["genome_twobit"],
-        genome_organism=kwargs["genome_organism"],
-        description_html=kwargs["description_html"],
+    # 2. Add extractors
+    if seqnado:
+        builder.with_metadata_extractor(tn.from_seqnado_path)
+        
+    # 3. Configure groupings
+    if supergroup_by:
+        builder.group_by(*supergroup_by, as_supertrack=True)
+    if subgroup_by:
+        builder.group_by(*subgroup_by)
+    if overlay_by:
+        builder.overlay_by(*overlay_by)
+    if color_by:
+        builder.color_by(color_by)
+        
+    # 4. Custom Genome
+    if custom_genome or twobit:
+        if not twobit or not organism:
+             console.print("[red]Error: --twobit and --organism are required for custom genomes[/red]")
+             raise typer.Exit(code=1)
+        builder.with_custom_genome(
+            name=genome_name,
+            twobit_file=twobit,
+            organism=organism,
+            default_position=default_pos
+        )
+        
+    # 5. Build
+    logger.info(f"Building hub '{hub_name}' for {genome_name}")
+    hub = builder.build(
+        name=hub_name,
+        genome=genome_name,
+        outdir=output,
+        hub_email=hub_email,
+        description_html=description
     )
-
+    
+    logger.info("Staging hub files")
     hub.stage_hub()
+    
+    logger.info(f"Hub created successfully at {output}")
+    hub_url = f"{url_prefix.strip('/')}/{str(output).strip('/')}/{hub_name}.hub.txt"
+    logger.info(f"Hub URL: {hub_url}")
+
+@app.command()
+def merge(
+    input_configs: List[pathlib.Path] = typer.Argument(
+        ..., help="A list of 'tracknado_config.json' files from previously generated hubs."
+    ),
+    output: pathlib.Path = typer.Option(
+        ..., "--output", "-o", help="The directory where the new merged hub will be staged."
+    ),
+    hub_name: str = typer.Option(
+        "MERGED_HUB", "--hub-name", help="The name for the combined hub."
+    ),
+    genome_name: str = typer.Option(
+        "hg38", "--genome-name", help="The genome assembly for the combined hub."
+    ),
+    hub_email: str = typer.Option(
+        "alastair.smith@ndcls.ox.ac.uk", "--hub-email", help="Contact email for the merged hub."
+    ),
+):
+    """
+    Merge multiple TrackNado hubs into one. 
+    
+    This command combines the track definitions from several sidecar configuration 
+    files into a single unified UCSC Track Hub.
+    """
+    logger.info(f"Merging {len(input_configs)} hub configurations")
+    
+    builders = [tn.HubBuilder.from_json(cfg) for cfg in input_configs]
+    
+    main_builder = builders[0]
+    if len(builders) > 1:
+        main_builder.merge(*builders[1:])
+        
+    hub = main_builder.build(
+        name=hub_name,
+        genome=genome_name,
+        outdir=output,
+        hub_email=hub_email
+    )
+    
+    logger.info("Staging merged hub")
+    hub.stage_hub()
+    logger.info(f"Merged hub created at {output}")
+
+@app.command()
+def validate(
+    hub_path: pathlib.Path = typer.Argument(
+        ..., help="Path to a hub directory or a 'hub.txt' file to check for errors."
+    ),
+    strict: bool = typer.Option(
+        False, "--strict", help="If set, treats all warnings as errors during validation."
+    ),
+):
+    """
+    Validate a local hub directory or hub.txt file.
+    
+    Performs structural checks and uses the UCSC 'hubCheck' tool if available 
+    to ensure the hub is correctly formatted and accessible.
+    """
+    logger.info(f"Validating hub at {hub_path}")
+    
+    path = hub_path
+    if path.is_dir():
+        # Try to find a hub.txt
+        hub_files = list(path.glob("*.hub.txt"))
+        if not hub_files:
+            logger.error(f"No .hub.txt file found in {hub_path}")
+            # Fallback to internal structure check
+            validator = tn.HubValidator(path)
+            valid = validator.validate_all()
+            for err in validator.errors: logger.error(err)
+            for warn in validator.warnings: logger.warning(warn)
+            if not valid: raise typer.Exit(code=1)
+            logger.info("Hub structure is valid (standard structure)")
+            return
+        path = hub_files[0]
+
+    valid, message = tn.validate_hub(path, strict=strict)
+    if valid:
+        logger.info(f"Success: {message}")
+    else:
+        logger.error(f"Validation failed: {message}")
+        raise typer.Exit(code=1)
+
+def cli():
+    app()
+
+if __name__ == "__main__":
+    app()
 
 
 
