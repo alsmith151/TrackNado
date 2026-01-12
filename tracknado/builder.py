@@ -1,6 +1,6 @@
 from __future__ import annotations
 import pathlib
-from typing import Callable, Any
+from typing import Callable, Any, Optional
 import pandas as pd
 from .models import Track, TrackGroup
 from .schemas import TrackDataFrameSchema, TrackDesignSchema
@@ -150,7 +150,7 @@ class HubBuilder(BaseModel):
                 
     def _convert_tracks(self, outdir: pathlib.Path):
         """Convert tracks to UCSC formats (e.g. BED -> BigBed)."""
-        from .converters import convert_bed_to_bigbed
+        from .converters import convert_bed_to_bigbed, convert_gtf_to_biggenepred
         
         if not self.chrom_sizes or not self.chrom_sizes.exists():
             raise ValueError("chrom_sizes must be provided and exist for track conversion")
@@ -171,6 +171,17 @@ class HubBuilder(BaseModel):
                 )
                 track.path = new_path
                 track.track_type = "bigBed"
+            elif track.path.suffix.lower() in [".gtf", ".gff"]:
+                logger.info(f"Converting {track.path.name} to BigGenePred")
+                dest = conv_dir / track.path.with_suffix(".bb").name
+                track._original_path = track.path
+                new_path = convert_gtf_to_biggenepred(
+                    track.path,
+                    self.chrom_sizes,
+                    dest
+                )
+                track.path = new_path
+                track.track_type = "bigGenePred"
         
     def _prepare_design_df(self) -> pd.DataFrame:
         """Convert tracks to the DataFrame format used by TrackDesign."""
@@ -182,6 +193,9 @@ class HubBuilder(BaseModel):
             "bigbed": "bigBed",
             "bigwig": "bigWig",
             "bed": "bigBed", # Default for .bed is bigBed (assuming conversion)
+            "gtf": "bigGenePred",
+            "gff": "bigGenePred",
+            "biggenepred": "bigGenePred",
             "narrowpeak": "narrowPeak",
             "broadpeak": "broadPeak",
         }

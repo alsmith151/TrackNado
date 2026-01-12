@@ -7,7 +7,7 @@ class TrackDataFrameSchema(pa.DataFrameModel):
     fn: Series[str] = pa.Field(description="File path")
     path: Series[str] | None = pa.Field(nullable=True)
     name: Series[str] | None = pa.Field(nullable=True)
-    ext: Series[str] = pa.Field(isin=["bigWig", "bigBed", "bw", "bb", "bw", "bb", "bigwig", "bigbed", "bed"])
+    ext: Series[str] = pa.Field(isin=["bigWig", "bigBed", "bw", "bb", "bigwig", "bigbed", "bed", "gtf", "gff", "bigGenePred"])
     
     class Config:
         coerce = True

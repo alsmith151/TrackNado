@@ -525,6 +525,14 @@ class HubGenerator:
                 }
             )
         
+        elif track.ext == "bigGenePred":
+            extra_kwargs.update(
+                {
+                    "visibility": "pack",
+                    "baseColorDefault": "genomicCodons",
+                }
+            )
+        
         return  trackhub.Track(
                 name="".join([trackhub.helpers.sanitize(track.name), suffix]),
                 shortLabel=" ".join(re.split(r"[.|_|\s+|-]", track.name)),
