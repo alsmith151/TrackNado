@@ -31,8 +31,10 @@ hub = (
 hub.stage_hub()
 ```
 
-## 📖 Useful Links
+## 📖 Documentation Sections
 
--   [User Guide](guide.md): Learn about grouping, coloring, and custom genomes.
--   [Examples](examples.md): See real-world usage scenarios.
--   [API Reference](api.md): Detailed documentation of all classes and functions.
+Use the navigation bar at the top or the links below to explore:
+
+-   **[User Guide](guide.md)**: Detailed instructions on metadata, groupings, and conversion.
+-   **[Examples](examples.md)**: Real-world scripts for CapCruncher and Snakemake.
+-   **[API Reference](api.md)**: Full library documentation.
