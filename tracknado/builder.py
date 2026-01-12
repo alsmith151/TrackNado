@@ -30,6 +30,7 @@ class HubBuilder(BaseModel):
     # Conversion settings
     convert_files: bool = Field(False)
     chrom_sizes: Optional[pathlib.Path] = Field(None)
+    custom_genome_config: dict[str, Any] = Field(default_factory=dict)
     
     # Non-serialized field for extractors (functions can't be JSON serialized easily)
     metadata_extractors: list[Callable[[pathlib.Path], dict[str, str]]] = Field(default_factory=list, exclude=True)
@@ -70,11 +71,29 @@ class HubBuilder(BaseModel):
         return self
         
     def group_by(self, *columns: str, as_supertrack: bool = False) -> 'HubBuilder':
-        """Specify columns to group by."""
+        """Specify columns to group by. If as_supertrack is True, these columns
+        will be used for SuperTracks instead of dimensions in a CompositeTrack.
+        """
         if as_supertrack:
             self.supergroup_by_cols.extend(columns)
         else:
             self.group_by_cols.extend(columns)
+        return self
+        
+    def with_custom_genome(
+        self, 
+        name: str, 
+        twobit_file: str | pathlib.Path, 
+        organism: str, 
+        default_position: str = "chr1:1000-2000"
+    ) -> 'HubBuilder':
+        """Configure a custom genome (Assembly Hub) for this hub."""
+        self.custom_genome_config = {
+            "custom_genome": True,
+            "genome_twobit": str(twobit_file),
+            "genome_organism": organism,
+            "genome_default_position": default_position
+        }
         return self
         
     def color_by(self, column: str, palette: str = 'tab20') -> HubBuilder:
@@ -247,6 +266,7 @@ class HubBuilder(BaseModel):
             track_design=design,
             outdir=outdir,
             hub_email=hub_email,
+            **self.custom_genome_config,
             **kwargs
         )
         
