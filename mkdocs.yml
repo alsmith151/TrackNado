@@ -6,6 +6,9 @@ theme:
     accent: deep purple
   features:
     - navigation.tabs
+    - navigation.sections
+    - navigation.instant
+    - navigation.tracking
     - content.code.copy
 
 plugins:
@@ -16,9 +19,12 @@ plugins:
           setup_commands:
             - import sys
             - sys.path.append(".")
+          options:
+            show_source: true
+            show_category_heading: true
 
 nav:
   - Home: index.md
-  - Guide: guide.md
+  - User Guide: guide.md
   - Examples: examples.md
   - API Reference: api.md
