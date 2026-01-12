@@ -1,110 +1,78 @@
-# TrackNado
+# TrackNado 🌪️
 
-Simple command line tool to quickly generate a UCSC hub from a set of files.
+[![Documentation](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://alsmith151.github.io/TrackNado/)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+[![Python 3.7+](https://img.shields.io/badge/python-3.7+-blue.svg)](https://www.python.org/downloads/)
+
+TrackNado is a powerful Python library and CLI tool designed to quickly generate UCSC Genome Browser track hubs from sequencing data. It features a fluent API, robust metadata extraction, and smart hub merging.
+
+## Key Features
+
+- **Fluent API**: Builder pattern for intuitive hub construction.
+- **Type Safety**: Powered by Pydantic and Pandera for robust validation.
+- **Smart Merging**: Merge hubs with automatic reconciliation of groupings and colors.
+- **Auto-Extraction**: Built-in extractors for complex directory structures (e.g., seqnado).
+- **Local Validation**: Built-in support for UCSC `hubCheck`.
+- **Modern Docs**: Comprehensive documentation built with MkDocs.
 
 ## Installation
+
 ```bash
 pip install tracknado
 ```
 
-## Usage
-
-See the help for more details on the options that can be provided.
-
+To include documentation building dependencies:
 ```bash
-tracknado --help
+pip install "tracknado[docs]"
 ```
 
-## Example
+## Quick Start (Python API)
 
-### Minimal example with no track details
+```python
+import tracknado as tn
 
-```bash
-tracknado \
-create \ 
---hub-name HUB_NAME_HERE \
---hub-email EMAIL_ADDRESS \
---genome-name hg38 \
--o /datashare/asmith/ \
--i bigwigs/deeptools/*.bigWig peaks/lanceotron/*.bigBed
+# Build a hub with a few lines of code
+hub = (
+    tn.HubBuilder()
+    .add_tracks(['data/sample1.bw', 'data/sample2.bw'])
+    .with_metadata_extractor(tn.from_seqnado_path)
+    .group_by('method', as_supertrack=True)
+    .color_by('samplename')
+    .build(
+        name='MyHub',
+        genome='hg38',
+        outdir='hubs/my_hub/',
+        hub_email='your@email.com'
+    )
+)
+
+# Stage the hub files
+hub.stage_hub()
 ```
 
-### Example with track details
+## Quick Start (CLI)
 
+### Create a Hub
 ```bash
-tracknado \
-create \
---hub-name HUB_NAME_HERE \
---hub-email EMAIL_ADDRESS \
---genome-name hg38 \
--o /datashare/asmith/ \
--d PATH_TO_TRACK_DETAILS_FILE \
+tracknado create -i data/*.bw -o my_hub --hub-name "My Hub" --genome-name hg38 --seqnado
 ```
 
-### Example with a custom genome
-
+### Merge Hubs
+TrackNado automatically saves a `tracknado_config.json` sidecar. Use it to merge hubs:
 ```bash
-tracknado \
-create \
---hub-name HUB_NAME_HERE \
---hub-email EMAIL_ADDRESS \
---genome-name CUSTOM_GENOME_NAME \
---genome-organism CUSTOM_GENOME_ORGANISM \
---genome-two-bit-path PATH_TO_TWO_BIT_FILE \
--i bigwigs/deeptools/*.bigWig peaks/lanceotron/*.bigBed
--o /datashare/asmith/ \
+tracknado merge -i hub1/tracknado_config.json hub2/tracknado_config.json -o merged_hub
 ```
 
-## Merging hubs
-
-It is possible to merge the outputs from tracknado create into a single hub by using the merge command. This requires that
-hubs have been created with the --save-hub-design flag. This will create a file called hub_design.pkl in the output
-directory. This file contains all the information required to recreate the hub. This does require that the hubs are for the same
-genome.
-
-First create a couple of example hubs as above:
-
+### Validate a Hub
 ```bash
-tracknado \
-create \
---hub-name HUB_NAME_HERE \
---hub-email EMAIL_ADDRESS \
---genome-name hg38 \
--o /datashare/asmith/path1 \
--i bigwigs/deeptools/*.bigWig peaks/lanceotron/*.bigBed \
---save-hub-design
+tracknado validate my_hub/
 ```
 
-```bash
-tracknado \
-create \
---hub-name HUB_NAME_HERE \
---hub-email EMAIL_ADDRESS \
---genome-name hg38 \
--o /datashare/asmith/path2 \
--i bigwigs/deeptools/*.bigWig peaks/lanceotron/*.bigBed \
---save-hub-design
-```
+## Documentation
 
+For detailed usage guides and API reference, visit our documentation:
+[https://alsmith151.github.io/TrackNado/](https://alsmith151.github.io/TrackNado/)
 
-Then merge them:
+## License
 
-```bash
-tracknado \
-merge \
---hub-name HUB_NAME_HERE \
---hub-email EMAIL_ADDRESS \
---genome-name hg38 \
--o /datashare/asmith/merged \
--i /datashare/asmith/path1/hub_design.pkl /datashare/asmith/path2/hub_design.pkl
-```
-
-This will create a new hub in /datashare/asmith/merged that contains all the tracks from the two input hubs. 
-You can also supply all of the standard arguments to the merge command to change the hub name, email, genome etc.
-
-
-
-
-
-
-
+TrackNado is released under the [GNU General Public License v3](LICENSE).
