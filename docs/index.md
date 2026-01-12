@@ -1,24 +1,23 @@
-# TrackNado
+# TrackNado 🌪️
 
-Simple command line tool and Python library to quickly generate UCSC track hubs from sequencing data.
+**TrackNado** is a high-level library and CLI tool designed to quickly generate UCSC Genome Browser track hubs from sequencing data.
 
-## Installation
+## Features
+
+-   **Fluent API**: Declarative hub construction.
+-   **Auto-Conversion**: Implicitly handle BED, GTF, and GFF files.
+-   **Smart Merging**: Combine multiple projects with one command.
+-   **Validation**: Built-in support for `hubCheck`.
+
+## 🚀 Quick Start
+
+### Installation
 
 ```bash
 pip install tracknado
 ```
 
-## Quick Start
-
-TrackNado can be used from the command line or from Python.
-
-### CLI
-
-```bash
-tracknado create -i data/*.bigWig -o my_hub --hub-name "My Hub" --genome-name hg38
-```
-
-### Python API
+### Basic Usage
 
 ```python
 import tracknado as tn
@@ -29,4 +28,11 @@ hub = (
     .group_by('method')
     .build(name='my_hub', genome='hg38', outdir='out/')
 )
+hub.stage_hub()
 ```
+
+## 📖 Useful Links
+
+-   [User Guide](guide.md): Learn about grouping, coloring, and custom genomes.
+-   [Examples](examples.md): See real-world usage scenarios.
+-   [API Reference](api.md): Detailed documentation of all classes and functions.

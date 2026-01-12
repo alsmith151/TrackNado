@@ -118,7 +118,7 @@ You can merge multiple TrackNado configurations into a single "Master" hub.
 
 ```bash
 # Merge two existing project configurations
-tracknado merge project_a/tracknado_config.json project_b/tracknado_config.json -o master_hub
+tracknado merge project_a/tracknado_config.json project_b/tracknado_config.json -o merged_hub
 ```
 
 ## Validation

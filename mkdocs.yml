@@ -20,4 +20,5 @@ plugins:
 nav:
   - Home: index.md
   - Guide: guide.md
+  - Examples: examples.md
   - API Reference: api.md

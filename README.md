@@ -15,7 +15,7 @@
 -   **Custom Genomes (Assembly Hubs)**: Deep support for private assemblies with `.2bit` integration.
 -   **Multi-Dimensional Grouping**: Seamlessly create SuperTracks, CompositeTracks (matrix display), and OverlayTracks.
 -   **Universal Metadata**: Extract metadata from filenames, parent directories, or external CSV/TSV tables.
--   **Smart Merging**: Combine multiple projects into a single master hub via sidecar JSON configurations.
+-   **Smart Merging**: Combine multiple projects into a single unified hub via sidecar JSON configurations.
 -   **Type Safety**: Fully validated by Pydantic and Pandera.
 
 ---
