@@ -1,8 +1,9 @@
+from __future__ import annotations
 import re
 from pathlib import Path
-from typing import Callable, Dict
+from typing import Callable
 
-def from_seqnado_path(path: Path) -> Dict[str, str]:
+def from_seqnado_path(path: Path) -> dict[str, str]:
     """Extract metadata from seqnado file paths.
     
     Pattern: .../assay/method/norm/samplename.ext
@@ -23,7 +24,7 @@ def from_seqnado_path(path: Path) -> Dict[str, str]:
     
     return metadata
 
-def from_filename_pattern(pattern: str) -> Callable[[Path], Dict[str, str]]:
+def from_filename_pattern(pattern: str) -> Callable[[Path], dict[str, str]]:
     """Create extractor from regex pattern with named groups."""
     regex = re.compile(pattern)
     
@@ -35,14 +36,14 @@ def from_filename_pattern(pattern: str) -> Callable[[Path], Dict[str, str]]:
         
     return extractor
 
-def from_parent_dirs(depth: int = 1, names: list[str] = None) -> Callable[[Path], Dict[str, str]]:
+def from_parent_dirs(depth: int = 1, names: list[str] = None) -> Callable[[Path], dict[str, str]]:
     """Extract metadata from parent directory names.
     
     Args:
         depth: How many levels up to go
         names: Optional list of keys for the directory levels (last to first)
     """
-    def extractor(path: Path) -> Dict[str, str]:
+    def extractor(path: Path) -> dict[str, str]:
         metadata = {}
         current = path.parent
         for i in range(depth):

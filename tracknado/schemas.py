@@ -1,12 +1,12 @@
+from __future__ import annotations
 import pandera.pandas as pa
 from pandera.typing import Series
-from typing import Optional
 
 class TrackDataFrameSchema(pa.DataFrameModel):
     """Schema for track DataFrames."""
     fn: Series[str] = pa.Field(description="File path")
-    path: Optional[Series[str]] = pa.Field(nullable=True)
-    name: Optional[Series[str]] = pa.Field(nullable=True)
+    path: Series[str] | None = pa.Field(nullable=True)
+    name: Series[str] | None = pa.Field(nullable=True)
     ext: Series[str] = pa.Field(isin=["bigWig", "bigBed", "bw", "bb", "bw", "bb", "bigwig", "bigbed", "bed"])
     
     class Config:
@@ -19,10 +19,10 @@ class TrackDesignSchema(pa.DataFrameModel):
     path: Series[str]
     name: Series[str]
     ext: Series[str]
-    color: Optional[Series[object]] = pa.Field(nullable=True)
-    supertrack: Optional[Series[str]] = pa.Field(nullable=True)
-    composite: Optional[Series[str]] = pa.Field(nullable=True)
-    overlay: Optional[Series[str]] = pa.Field(nullable=True)
+    color: Series[object] | None = pa.Field(nullable=True)
+    supertrack: Series[str] | None = pa.Field(nullable=True)
+    composite: Series[str] | None = pa.Field(nullable=True)
+    overlay: Series[str] | None = pa.Field(nullable=True)
     
     class Config:
         coerce = True

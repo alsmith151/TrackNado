@@ -1,11 +1,12 @@
+from __future__ import annotations
 import os
 from pathlib import Path
 import subprocess
 import shutil
-from typing import List, Tuple, Optional, Union
+from typing import Optional
 from loguru import logger
 
-def validate_hub(hub_path: Path, strict: bool = False) -> Tuple[bool, str]:
+def validate_hub(hub_path: Path, strict: bool = False) -> tuple[bool, str]:
     """Validate a hub using UCSC's hubCheck tool.
     
     Args:
@@ -48,7 +49,7 @@ def validate_hub(hub_path: Path, strict: bool = False) -> Tuple[bool, str]:
 class HubValidator:
     """Validates hub structure without external tools."""
     
-    def __init__(self, hub_dir: Union[str, Path]):
+    def __init__(self, hub_dir: str | Path):
         self.hub_dir = Path(hub_dir)
         self.errors = []
         self.warnings = []
@@ -59,7 +60,7 @@ class HubValidator:
         self.validate_track_files_exist()
         return len(self.errors) == 0
 
-    def validate_structure(self) -> List[str]:
+    def validate_structure(self) -> list[str]:
         """Check hub has required files."""
         hub_txt = self.hub_dir / f"{self.hub_dir.name}.hub.txt"
         # Since hub names can vary, we look for *.hub.txt
@@ -68,8 +69,9 @@ class HubValidator:
             self.errors.append("No hub.txt file found in directory.")
         
         # Check for genomes.txt referenced in hub.txt would be better, 
-        # but for now we check common file names
-        genomes_files = list(self.hub_dir.glob("**/genomes.txt"))
+        # but for now we look for common file names or hub-specific ones
+        genomes_files = (list(self.hub_dir.glob("**/genomes.txt")) + 
+                         list(self.hub_dir.glob("**/*.genomes.txt")))
         if not genomes_files:
             self.errors.append("No genomes.txt file found.")
             
@@ -79,7 +81,7 @@ class HubValidator:
             
         return self.errors
 
-    def validate_track_files_exist(self) -> List[str]:
+    def validate_track_files_exist(self) -> list[str]:
         """Ensure all referenced track files exist locally.
         
         Note: This only works if tracks are local paths, which is true during staging.

@@ -1,8 +1,9 @@
+from __future__ import annotations
 import os
 import pathlib
 import click
 import pandas as pd
-from typing import Literal, Union, List, Tuple, Optional
+from typing import Literal, Optional
 from loguru import logger
 
 import tracknado as tn
@@ -106,11 +107,24 @@ def cli():
     help="URL prefix for the hub", 
     default="https://userweb.molbiol.ox.ac.uk"
 )
+@click.option(
+    "--convert",
+    help="Convert tracks to UCSC formats (e.g. BED -> BigBed)",
+    is_flag=True,
+    default=False,
+)
+@click.option(
+    "--chrom-sizes",
+    help="Path to chrom.sizes file (required for conversion)",
+    type=click.Path(exists=True, path_type=pathlib.Path),
+)
 def create(**kwargs):
     """Create a UCSC track hub from a set of files."""
     logger.info("Initializing TrackNado")
     
     builder = tn.HubBuilder()
+    builder.convert_files = kwargs["convert"]
+    builder.chrom_sizes = kwargs["chrom_sizes"]
     
     # 1. Add tracks
     if kwargs["details"]:

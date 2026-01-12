@@ -1,14 +1,15 @@
+from __future__ import annotations
 from pydantic import BaseModel, Field, field_validator
 from pathlib import Path
-from typing import Optional, List, Dict
+from typing import Optional
 
 class Track(BaseModel):
     """Single track with validated metadata."""
     path: Path
-    name: Optional[str] = None  # Auto-derived from path if None
-    metadata: Dict[str, str] = Field(default_factory=dict)
-    color: Optional[tuple[int, int, int]] = None
-    track_type: Optional[str] = None  # bigWig, bigBed, etc.
+    name: str | None = None  # Auto-derived from path if None
+    metadata: dict[str, str] = Field(default_factory=dict)
+    color: tuple[int, int, int] | None = None
+    track_type: str | None = None  # bigWig, bigBed, etc.
     
     @field_validator('path')
     @classmethod
@@ -29,9 +30,9 @@ class Track(BaseModel):
 class TrackGroup(BaseModel):
     """Hierarchical grouping of tracks."""
     name: str
-    tracks: List[Track] = Field(default_factory=list)
-    subgroups: List['TrackGroup'] = Field(default_factory=list)
-    metadata: Dict[str, str] = Field(default_factory=dict)
+    tracks: list[Track] = Field(default_factory=list)
+    subgroups: list[TrackGroup] = Field(default_factory=list)
+    metadata: dict[str, str] = Field(default_factory=dict)
 
 # Required for recursive models
 TrackGroup.model_rebuild()

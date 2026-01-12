@@ -23,6 +23,34 @@ hub.color_by("samplename")
 hub.overlay_by("samplename")
 ```
 
+## Track Conversion
+
+TrackNado can implicitly convert tracks to UCSC-compatible formats (e.g., BED to BigBed).
+
+### CLI
+
+Use the `--convert` flag and provide a `chrom.sizes` file:
+
+```bash
+tracknado create -i data/*.bed -o my_hub --convert --chrom-sizes chrom.sizes
+```
+
+TrackNado will automatically look for `bedToBigBed` in your PATH, `~/bin`, or attempt to run it via Apptainer/Docker if available.
+
+### Python API
+
+```python
+hub = (
+    tn.HubBuilder()
+    .add_tracks(['regions.bed'])
+    .with_convert_files()
+    .with_chrom_sizes("hg38.chrom.sizes")
+)
+hub.build(...)
+```
+
+---
+
 ## Validation
 
 You can validate your hub locally before uploading it.
