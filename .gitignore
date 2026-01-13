@@ -3,3 +3,4 @@
 .vscode
 _version.py
 .ipynb_checkpoints
+site/*
