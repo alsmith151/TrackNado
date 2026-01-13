@@ -33,8 +33,10 @@ hub.stage_hub()
 
 ## 📖 Documentation Sections
 
-Use the navigation bar at the top or the links below to explore:
+Explore the documentation to get started:
 
--   **[User Guide](guide.md)**: Detailed instructions on metadata, groupings, and conversion.
--   **[Examples](examples.md)**: Real-world scripts for CapCruncher and Snakemake.
--   **[API Reference](api.md)**: Full library documentation.
+-   **[Getting Started](guide/getting-started.md)**: Installation and quick start guides for CLI and API.
+-   **[Metadata Management](guide/metadata.md)**: Learn how to handle track metadata effectively.
+-   **[Organizing Tracks](guide/organization.md)**: Deep dive into SuperTracks, CompositeTracks, and overlays.
+-   **[API Reference](reference/api.md)**: Full library documentation.
+-   **[Examples](examples/overview.md)**: Real-world scripts for common workflows.

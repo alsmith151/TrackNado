@@ -1,15 +1,41 @@
 site_name: TrackNado
+site_url: https://alsmith151.github.io/TrackNado/
+site_description: High-level library and CLI for generating UCSC Genome Browser track hubs.
+repo_url: https://github.com/alsmith151/TrackNado
+repo_name: TrackNado
+
 theme:
   name: material
+  logo: material/whirlpool
+  favicon: material/whirlpool
   palette:
-    primary: deep purple
-    accent: deep purple
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: deep purple
+      accent: deep purple
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: deep purple
+      accent: deep purple
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
   features:
     - navigation.tabs
+    - navigation.tabs.sticky
     - navigation.sections
+    - navigation.expand
+    - navigation.path
     - navigation.instant
     - navigation.tracking
+    - navigation.top
+    - search.suggest
+    - search.highlight
     - content.code.copy
+    - content.code.annotate
 
 plugins:
   - search
@@ -25,6 +51,27 @@ plugins:
 
 nav:
   - Home: index.md
-  - User Guide: guide.md
-  - Examples: examples.md
-  - API Reference: api.md
+  - User Guide:
+    - Getting Started: guide/getting-started.md
+    - Metadata Management: guide/metadata.md
+    - Organizing Tracks: guide/organization.md
+    - File Conversion: guide/conversion.md
+    - Advanced Features: guide/advanced.md
+  - Examples:
+    - Overview: examples/overview.md
+    - CapCruncher: examples/capcruncher.md
+    - Snakemake: examples/snakemake.md
+    - Edge Cases: examples/edge-cases.md
+    - Fluent API: examples/fluent-api.md
+  - Reference:
+    - CLI Reference: reference/cli.md
+    - API Reference: reference/api.md
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - attr_list
+  - md_in_html
