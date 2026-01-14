@@ -4,3 +4,4 @@
 _version.py
 .ipynb_checkpoints
 site/*
+build/*

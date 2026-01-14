@@ -6,8 +6,8 @@ repo_name: TrackNado
 
 theme:
   name: material
-  logo: material/whirlpool
-  favicon: material/whirlpool
+  logo: assets/logo.png
+  favicon: assets/favicon.png
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
@@ -26,12 +26,11 @@ theme:
   features:
     - navigation.tabs
     - navigation.tabs.sticky
-    - navigation.sections
-    - navigation.expand
     - navigation.path
-    - navigation.instant
     - navigation.tracking
     - navigation.top
+    - navigation.indexes
+    - navigation.footer
     - search.suggest
     - search.highlight
     - content.code.copy
