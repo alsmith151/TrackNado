@@ -177,12 +177,19 @@ class HubBuilder(BaseModel):
             return
 
         for track in self.tracks:
+            # Skip if metadata has already been extracted (marked with _metadata_extracted flag)
+            if getattr(track, "_metadata_extracted", False):
+                continue
+            
             # Use original path if it exists for extraction, as it might have more metadata in its name/path
             # than a temporary converted path.
             path_to_extract = getattr(track, "_original_path", track.path)
             for extractor in self.metadata_extractors:
                 extracted = extractor(path_to_extract)
                 track.metadata.update(extracted)
+            
+            # Mark this track as having metadata extracted
+            track._metadata_extracted = True
 
     def _convert_tracks(self, outdir: pathlib.Path):
         """Convert tracks to UCSC formats (e.g. BED -> BigBed)."""
@@ -217,6 +224,8 @@ class HubBuilder(BaseModel):
 
     def _prepare_design_df(self) -> pd.DataFrame:
         """Convert tracks to the DataFrame format used by TrackDesign."""
+        # Metadata extraction is idempotent and safe to call multiple times
+        # It will be a no-op if already extracted
         self._extract_metadata()
 
         extension_mapping = {
@@ -266,7 +275,10 @@ class HubBuilder(BaseModel):
         if self.convert_files:
             self._convert_tracks(outdir)
 
-        # 2. Save sidecar config
+        # 2. Extract metadata BEFORE saving config so extracted data is included
+        self._extract_metadata()
+
+        # 3. Save sidecar config (now with extracted metadata)
         self.to_json(outdir / "tracknado_config.json")
 
         df = self._prepare_design_df()
