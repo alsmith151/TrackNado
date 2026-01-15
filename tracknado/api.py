@@ -1,4 +1,8 @@
 from __future__ import annotations
+
+import hashlib
+import json
+import os
 import pathlib
 import re
 import shutil
@@ -6,30 +10,32 @@ import subprocess
 import tempfile
 from collections import defaultdict, namedtuple
 from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from typing import Dict, List, Union
-import hashlib
-import json
-from loguru import logger
+
 import pandas as pd
 import trackhub
+from loguru import logger
+
+if TYPE_CHECKING:
+    from typing import Dict, List, Union
 
 
 def get_hash(obj: object) -> str:
     """Get hash of object"""
     return hashlib.md5(json.dumps(obj).encode("utf-8")).hexdigest()
 
-def get_hash_for_df(df: pd.DataFrame, columns: list[str] | pd.Index = None) -> list[str]:
 
+def get_hash_for_df(
+    df: pd.DataFrame, columns: list[str] | pd.Index = None
+) -> list[str]:
     if columns is None:
         columns = df.columns
-    
+
     hashes = []
     for row in df.itertuples():
         x = tuple([getattr(row, x) for x in columns])
         hash = get_hash(x)
         hashes.append(hash)
-    
+
     return hashes
 
 
@@ -43,7 +49,6 @@ class TrackDesign:
         supergroup_by: list[str] = None,
         **kwargs,
     ):
-
         self.details = details
         self._supertrack_columns = list(supergroup_by) if supergroup_by else list()
         self._overlay_columns = list(overlay_by) if overlay_by else list()
@@ -51,7 +56,9 @@ class TrackDesign:
         self.subgroup_definitions = list() if subgroup_by else None
         self._color_columns = list(color_by) if color_by else list()
 
-        self._add_subgroupings(supergroup_by=self._supertrack_columns, subgroup_by=self._subgroup_columns)
+        self._add_subgroupings(
+            supergroup_by=self._supertrack_columns, subgroup_by=self._subgroup_columns
+        )
 
         self.super_tracks = self._get_super_tracks()
         self._add_supertrack_indicators()
@@ -74,7 +81,6 @@ class TrackDesign:
         palette: str = "tab20",
         color_column: str = None,
     ) -> None:
-
         """Add a column to the details dataframe with a color for each track"""
 
         from PIL import ImageColor
@@ -83,11 +89,14 @@ class TrackDesign:
             if isinstance(color_by, str):
                 color_by = [color_by]
 
-            assert all([c in self.details.columns for c in color_by]), f"Color-By columns {color_by} missing"  # type: ignore
+            assert all([c in self.details.columns for c in color_by]), (
+                f"Color-By columns {color_by} missing"
+            )  # type: ignore
 
             try:
                 # Get a palette with enough colors for the unique groups in the details
                 import seaborn as sns
+
                 n_colors = len(self.details[color_by].drop_duplicates())
                 colors = sns.color_palette(palette, n_colors=n_colors).as_hex()  # type: ignore
 
@@ -110,10 +119,9 @@ class TrackDesign:
                 )
 
         elif color_column:
-
-            assert (
-                color_column in self.details.columns
-            ), f"Color column {color_column} missing"
+            assert color_column in self.details.columns, (
+                f"Color column {color_column} missing"
+            )
 
             colors = []
             for i, color in enumerate(self.details[color_column]):
@@ -139,9 +147,9 @@ class TrackDesign:
     ) -> pd.DataFrame:
         """Add a column to the details dataframe with a `trackhub.SubGroupDefinition` for each track"""
 
-        assert all(
-            [c in df.columns for c in subgroup_by]
-        ), f"Subgroup-By columns {subgroup_by} missing"
+        assert all([c in df.columns for c in subgroup_by]), (
+            f"Subgroup-By columns {subgroup_by} missing"
+        )
         df = df.copy()
 
         # Loop through all columns provided and generate a subgroup definition for each
@@ -179,19 +187,24 @@ class TrackDesign:
         """
 
         if subgroup_by:
-
-            assert all(
-                [c in self.details.columns for c in subgroup_by]
-            ), f"Subgroup-By columns {subgroup_by} missing"
+            assert all([c in self.details.columns for c in subgroup_by]), (
+                f"Subgroup-By columns {subgroup_by} missing"
+            )
 
             if supergroup_by:
-                assert not any(
-                    subgroup in supergroup_by for subgroup in subgroup_by
-                ), f"SubGroup columns {subgroup_by} cannot be in SuperGroup columns {supergroup_by}"
-          
-                self.details = self.details.groupby(supergroup_by).apply(
-                    self._add_subgroup_definitions_to_df, subgroup_by=subgroup_by, include_groups=False
-                ).reset_index(drop=False)
+                assert not any(subgroup in supergroup_by for subgroup in subgroup_by), (
+                    f"SubGroup columns {subgroup_by} cannot be in SuperGroup columns {supergroup_by}"
+                )
+
+                self.details = (
+                    self.details.groupby(supergroup_by)
+                    .apply(
+                        self._add_subgroup_definitions_to_df,
+                        subgroup_by=subgroup_by,
+                        include_groups=False,
+                    )
+                    .reset_index(drop=False)
+                )
                 # Drop the extra index levels if they are named after the columns
                 self.details = self.details.loc[:, ~self.details.columns.duplicated()]
             else:
@@ -203,26 +216,25 @@ class TrackDesign:
         """Generate a dictionary of SuperTracks from the details dataframe"""
 
         if self._supertrack_columns:
-            assert all(
-                [c in self.details.columns for c in self._supertrack_columns]
-            ), f"SuperTrack columns {self._supertrack_columns} missing"
+            assert all([c in self.details.columns for c in self._supertrack_columns]), (
+                f"SuperTrack columns {self._supertrack_columns} missing"
+            )
 
             supertracks = dict()
-            for grouping, df in self.details.reset_index(drop=True).groupby(self._supertrack_columns, as_index=False):
-                
-
+            for grouping, df in self.details.reset_index(drop=True).groupby(
+                self._supertrack_columns, as_index=False
+            ):
                 if isinstance(grouping, str):
                     track_id = (grouping,)
                 elif len(grouping) == 1:
                     track_id = grouping
                 else:
                     track_id = tuple(grouping)
-                
+
                 if len(track_id) == 1:
                     track_name = track_id[0]
                 else:
                     track_name = "_".join(track_id)
-
 
                 supertracks[get_hash(track_id)] = trackhub.SuperTrack(
                     name=track_name,
@@ -237,30 +249,29 @@ class TrackDesign:
         """Add a column to the details dataframe with a SuperTrack indicator for each track"""
 
         if self._supertrack_columns:
-            assert all(
-                [c in self.details.columns for c in self._supertrack_columns]
-            ), f"SuperTrack columns {self._supertrack_columns} missing"
+            assert all([c in self.details.columns for c in self._supertrack_columns]), (
+                f"SuperTrack columns {self._supertrack_columns} missing"
+            )
 
-            self.details["supertrack"] = get_hash_for_df(self.details, self._supertrack_columns)
-    
+            self.details["supertrack"] = get_hash_for_df(
+                self.details, self._supertrack_columns
+            )
+
     def _get_composite_tracks(self) -> dict[str, trackhub.CompositeTrack]:
         """Generate a dictionary of CompositeTracks from the details dataframe"""
 
         composite_tracks = dict()
         dimensions = dict(
-                    zip(
-                        [f"dim{d}" for d in ["X", "Y", "A", "B", "C", "D"]],
-                        self._subgroup_columns,
-                    )
-                )
-        
-        if "supertrack" in self.details.columns:
-            for (supertrack, ext) , df in self.details.groupby(["supertrack", "ext"]):
-                
+            zip(
+                [f"dim{d}" for d in ["X", "Y", "A", "B", "C", "D"]],
+                self._subgroup_columns,
+            )
+        )
 
+        if "supertrack" in self.details.columns:
+            for (supertrack, ext), df in self.details.groupby(["supertrack", "ext"]):
                 supertrack_name = self.super_tracks[supertrack].name
                 composite_name = "_".join([supertrack_name, ext])
-
 
                 composite = trackhub.CompositeTrack(
                     name=composite_name,
@@ -293,7 +304,7 @@ class TrackDesign:
 
                 composite.add_subgroups(self.subgroup_definitions)
                 composite_tracks[get_hash((ext,))] = composite
-        
+
         else:
             composite_tracks = dict()
 
@@ -316,25 +327,31 @@ class TrackDesign:
         """Generate a dictionary of OverlayTracks from the details dataframe"""
 
         if self._overlay_columns:
-            assert all(
-                [c in self.details.columns for c in self._overlay_columns]
-            ), f"Overlay columns {self._overlay_columns} missing"
+            assert all([c in self.details.columns for c in self._overlay_columns]), (
+                f"Overlay columns {self._overlay_columns} missing"
+            )
 
             overlay_tracks = dict()
-            overlay_columns = list(self._overlay_columns) if not isinstance(self._overlay_columns, str) else [self._overlay_columns,]
+            overlay_columns = (
+                list(self._overlay_columns)
+                if not isinstance(self._overlay_columns, str)
+                else [
+                    self._overlay_columns,
+                ]
+            )
 
             if "supertrack" in self.details.columns:
-
-                for (supertrack, overlay) , df in self.details.groupby(
+                for (supertrack, overlay), df in self.details.groupby(
                     ["supertrack", *self._overlay_columns]
                 ):
-                    
                     supertrack_name = self.super_tracks[supertrack].name
 
                     if isinstance(overlay, str):
                         overlay_name = "_".join([supertrack_name, overlay]) + "_overlay"
                     else:
-                        overlay_name = "_".join([supertrack_name, *overlay]) + "_overlay"
+                        overlay_name = (
+                            "_".join([supertrack_name, *overlay]) + "_overlay"
+                        )
 
                     overlay_track = trackhub.AggregateTrack(
                         aggregate="transparentOverlay",
@@ -343,13 +360,18 @@ class TrackDesign:
                     )
 
                     self.super_tracks[supertrack].add_tracks(overlay_track)
-                    overlay_tracks[get_hash(tuple([supertrack, overlay]))] = overlay_track
+                    overlay_tracks[get_hash(tuple([supertrack, overlay]))] = (
+                        overlay_track
+                    )
 
             else:
                 for overlay, df in self.details.groupby(self._overlay_columns):
-
-                    overlay_name = "_".join(overlay) if isinstance(overlay, tuple) else overlay
-                    overlay_id = tuple(overlay) if isinstance(overlay, tuple) else (overlay,)
+                    overlay_name = (
+                        "_".join(overlay) if isinstance(overlay, tuple) else overlay
+                    )
+                    overlay_id = (
+                        tuple(overlay) if isinstance(overlay, tuple) else (overlay,)
+                    )
 
                     overlay_track = trackhub.AggregateTrack(
                         aggregate="transparentOverlay",
@@ -367,29 +389,29 @@ class TrackDesign:
         """Add a column to the details dataframe with an OverlayTrack indicator for each track"""
 
         if self._overlay_columns:
-
-            overlay_columns = (
-                ["supertrack"] if self._supertrack_columns else []
-            )
+            overlay_columns = ["supertrack"] if self._supertrack_columns else []
             overlay_columns.extend(self._overlay_columns)
 
             # Only assign indicators to rows that actually have all overlay columns set
             has_overlay_cols = self.details[overlay_columns].notna().all(axis=1)
-            
+
             self.details.loc[has_overlay_cols, "overlay"] = get_hash_for_df(
                 self.details[has_overlay_cols], overlay_columns
             )
 
             # Verification should only apply to rows marked with 'overlay'
             valid_indicators = self.details["overlay"].dropna().unique()
-            missing = [i for i in valid_indicators if i not in self.overlay_tracks.keys()]
+            missing = [
+                i for i in valid_indicators if i not in self.overlay_tracks.keys()
+            ]
             if missing:
                 logger.warning(f"Overlay tracks not found for indices: {missing}")
                 # We can choose to either raise or just clear those indicators
-                self.details.loc[self.details["overlay"].isin(missing), "overlay"] = None
+                self.details.loc[self.details["overlay"].isin(missing), "overlay"] = (
+                    None
+                )
 
         return self
-
 
 
 class HubGenerator:
@@ -406,7 +428,6 @@ class HubGenerator:
         genome_organism: str = None,
         genome_default_position: str = "chr1:10000-20000",
     ):
-
         # Basic parameters for hub creation
         self.hub_name = hub_name
         self.genome_name = genome
@@ -424,7 +445,7 @@ class HubGenerator:
         self._hub = trackhub.Hub(
             hub_name, short_label=hub_name, long_label=hub_name, email=hub_email
         )
-        
+
         self.trackdb = trackhub.TrackDb()
         _genome = self._get_genome_file()  # type: ignore
         _genomes_file = trackhub.GenomesFile()
@@ -438,9 +459,8 @@ class HubGenerator:
 
     def _add_tracks_to_hub(self) -> None:
         # Loop through each entry in the details dataframe
-        
-        for row in self.track_design.details.itertuples():
 
+        for row in self.track_design.details.itertuples():
             has_composite = False
             has_overlay = False
 
@@ -460,8 +480,12 @@ class HubGenerator:
                 track = self._get_track(row, suffix=f"_{overlay_track.name}")
 
                 # Ignore the track if it is not a signal track e.g. bigWig
-                if track.tracktype not in ["bigWig", ]:
-                    logger.warning(f"Track {track.name} is not a signal track and will be ignored for the overlay track {overlay_track.name}")
+                if track.tracktype not in [
+                    "bigWig",
+                ]:
+                    logger.warning(
+                        f"Track {track.name} is not a signal track and will be ignored for the overlay track {overlay_track.name}"
+                    )
                 else:
                     overlay_track.add_subtrack(track)
 
@@ -474,14 +498,20 @@ class HubGenerator:
         # Add the supertracks or composite/overlay tracks to the trackdb
         if self.track_design.super_tracks:
             tracks = self.track_design.super_tracks.values()
-            
+
             # Ensure the composite and/or overlay tracks have the group attribute set
             if self.custom_genome:
-                for t in [*self.track_design.composite_tracks.values(), *self.track_design.overlay_tracks.values()]:
+                for t in [
+                    *self.track_design.composite_tracks.values(),
+                    *self.track_design.overlay_tracks.values(),
+                ]:
                     t.add_params(group=self._hub.hub)
 
         else:
-            tracks = [*self.track_design.composite_tracks.values(), *self.track_design.overlay_tracks.values()]
+            tracks = [
+                *self.track_design.composite_tracks.values(),
+                *self.track_design.overlay_tracks.values(),
+            ]
 
         # Add the composite/overlay and supertracks to the trackdb
         for ii, track in enumerate(tracks):
@@ -490,19 +520,18 @@ class HubGenerator:
                 track.add_params(group=self._hub.hub)
             self.trackdb.add_tracks(track)
 
-    
-
     def _get_track(self, track: namedtuple, suffix: str = "") -> trackhub.Track:
         """Generate a trackhub.Track object from a row in the details dataframe"""
-
 
         extra_kwargs = dict()
         if hasattr(track, "color"):
             extra_kwargs["color"] = ",".join([str(x) for x in track.color])
-        
+
         if hasattr(track, "subgroup_names"):
-            extra_kwargs["subgroups"] = {subgroup_name: getattr(track, subgroup_name) 
-                                         for subgroup_name in track.subgroup_names}
+            extra_kwargs["subgroups"] = {
+                subgroup_name: getattr(track, subgroup_name)
+                for subgroup_name in track.subgroup_names
+            }
 
         if self.custom_genome:
             extra_kwargs["group"] = self._hub.hub
@@ -517,14 +546,14 @@ class HubGenerator:
                     "windowingFunction": "mean",
                 }
             )
-        
+
         elif track.ext == "bigBed":
             extra_kwargs.update(
                 {
                     "visibility": "pack",
                 }
             )
-        
+
         elif track.ext == "bigGenePred":
             extra_kwargs.update(
                 {
@@ -532,19 +561,17 @@ class HubGenerator:
                     "baseColorDefault": "genomicCodons",
                 }
             )
-        
-        return  trackhub.Track(
-                name="".join([trackhub.helpers.sanitize(track.name), suffix]),
-                shortLabel=" ".join(re.split(r"[.|_|\s+|-]", track.name)),
-                longLabel=" ".join(re.split(r"[.|_|\s+|-]", track.name)),
-                source=str(track.path),
-                tracktype=track.ext,
-                **extra_kwargs,
-               
-            )
-      
-    def _get_genome_file(self) -> trackhub.Genome:
 
+        return trackhub.Track(
+            name="".join([trackhub.helpers.sanitize(track.name), suffix]),
+            shortLabel=" ".join(re.split(r"[.|_|\s+|-]", track.name)),
+            longLabel=" ".join(re.split(r"[.|_|\s+|-]", track.name)),
+            source=str(track.path),
+            tracktype=track.ext,
+            **extra_kwargs,
+        )
+
+    def _get_genome_file(self) -> trackhub.Genome:
         if not self.custom_genome:
             genome = trackhub.Genome(self.genome_name)
             groups_file = None
@@ -568,19 +595,21 @@ class HubGenerator:
 
         return genome
 
-
     def stage_hub(
         self,
     ):
-
         with tempfile.TemporaryDirectory() as tmpdir:
             trackhub.upload.stage_hub(self._hub, staging=tmpdir)
 
             if self.description_url_path:
                 description_basename = os.path.basename(self.description_url_path)
-                with open(os.path.join(tmpdir, f"{self._hub.hub}.hub.txt"), "a") as hubtxt:
+                with open(
+                    os.path.join(tmpdir, f"{self._hub.hub}.hub.txt"), "a"
+                ) as hubtxt:
                     hubtxt.write("\n")
-                    hubtxt.write(f"descriptionUrl {self.genome_name}/{description_basename}\n")
+                    hubtxt.write(
+                        f"descriptionUrl {self.genome_name}/{description_basename}\n"
+                    )
 
                 shutil.copy(
                     self.description_url_path,
@@ -596,13 +625,3 @@ class HubGenerator:
             )
 
             subprocess.run(["chmod", "-R", "2755", self.outdir])
-        
-    
-            
-            
-    
-   
-
-        
-    
-    
