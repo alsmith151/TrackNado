@@ -30,6 +30,7 @@ class HubBuilder(BaseModel):
     convert_files: bool = Field(False)
     chrom_sizes: Optional[pathlib.Path] = Field(None)
     custom_genome_config: dict[str, Any] = Field(default_factory=dict)
+    sort_metadata: bool = Field(False)
 
     # Non-serialized field for extractors (functions can't be JSON serialized easily)
     metadata_extractors: list[Callable[[pathlib.Path], dict[str, str]]] = Field(
@@ -118,6 +119,11 @@ class HubBuilder(BaseModel):
         self.overlay_by_cols.extend(columns)
         return self
 
+    def with_sort_metadata(self, enabled: bool = True) -> HubBuilder:
+        """Enable or disable sorting of metadata columns in output."""
+        self.sort_metadata = enabled
+        return self
+
     def with_convert_files(self, enabled: bool = True) -> HubBuilder:
         """Enable or disable implicit track conversion."""
         self.convert_files = enabled
@@ -150,6 +156,8 @@ class HubBuilder(BaseModel):
             if not self.color_by_col:
                 self.color_by_col = other.color_by_col
                 self.color_palette = other.color_palette
+            # Merge sort_metadata: True if either is True
+            self.sort_metadata = self.sort_metadata or other.sort_metadata
         return self
 
     def to_json(self, path: str | pathlib.Path | None = None) -> str:
@@ -257,7 +265,16 @@ class HubBuilder(BaseModel):
             row.update(track.metadata)
             data.append(row)
 
-        return pd.DataFrame(data)
+        df = pd.DataFrame(data)
+        
+        # Sort columns alphabetically if requested (keeping standard columns first)
+        if self.sort_metadata:
+            standard_cols = ["fn", "path", "name", "ext"]
+            existing_standard = [c for c in standard_cols if c in df.columns]
+            other_cols = sorted([c for c in df.columns if c not in existing_standard])
+            df = df[existing_standard + other_cols]
+        
+        return df
 
     def build(
         self,

@@ -75,6 +75,12 @@ def create(
     template: Optional[pathlib.Path] = typer.Option(
         None, "--template", "-t", help="Create a template metadata file at the specified path and exit."
     ),
+    sort_metadata: bool = typer.Option(
+        False, "--sort-metadata", help="Sort metadata columns alphabetically (keeping standard columns first)."
+    ),
+    remove_existing: bool = typer.Option(
+        False, "--remove-existing", help="Remove existing hub at output location before staging."
+    ),
 ):
     """Create a UCSC track hub from a set of files."""
     if template:
@@ -118,6 +124,8 @@ def create(
         builder.overlay_by(*overlay_by)
     if color_by:
         builder.color_by(color_by)
+    if sort_metadata:
+        builder.with_sort_metadata()
         
     # 4. Custom Genome
     if custom_genome or twobit:
@@ -142,7 +150,7 @@ def create(
     )
     
     logger.info("Staging hub files")
-    hub.stage_hub()
+    hub.stage_hub(remove_existing=remove_existing)
     
     logger.info(f"Hub created successfully at {output}")
     hub_url = f"{url_prefix.strip('/')}/{str(output).strip('/')}/{hub_name}.hub.txt"
@@ -165,6 +173,12 @@ def merge(
     hub_email: str = typer.Option(
         "alastair.smith@ndcls.ox.ac.uk", "--hub-email", help="Contact email for the merged hub."
     ),
+    sort_metadata: bool = typer.Option(
+        False, "--sort-metadata", help="Sort metadata columns alphabetically (keeping standard columns first)."
+    ),
+    remove_existing: bool = typer.Option(
+        False, "--remove-existing", help="Remove existing hub at output location before staging."
+    ),
 ):
     """
     Merge multiple TrackNado hubs into one. 
@@ -179,6 +193,9 @@ def merge(
     main_builder = builders[0]
     if len(builders) > 1:
         main_builder.merge(*builders[1:])
+    
+    if sort_metadata:
+        main_builder.with_sort_metadata()
         
     hub = main_builder.build(
         name=hub_name,
@@ -188,7 +205,7 @@ def merge(
     )
     
     logger.info("Staging merged hub")
-    hub.stage_hub()
+    hub.stage_hub(remove_existing=remove_existing)
     logger.info(f"Merged hub created at {output}")
 
 @app.command()

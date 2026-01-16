@@ -597,6 +597,7 @@ class HubGenerator:
 
     def stage_hub(
         self,
+        remove_existing: bool = False,
     ):
         with tempfile.TemporaryDirectory() as tmpdir:
             trackhub.upload.stage_hub(self._hub, staging=tmpdir)
@@ -615,6 +616,14 @@ class HubGenerator:
                     self.description_url_path,
                     os.path.join(tmpdir, self.genome_name),
                 )
+
+            # Remove existing hub directory if requested
+            if remove_existing:
+                if self.outdir.exists():
+                    logger.info(f"Removing existing hub at {self.outdir}")
+                    shutil.rmtree(self.outdir)
+                else:
+                    logger.warning(f"--remove-existing was requested but no hub exists at {self.outdir}")
 
             # Copy to the new location
             shutil.copytree(
