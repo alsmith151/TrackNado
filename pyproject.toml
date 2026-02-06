@@ -1,8 +1,8 @@
 [build-system]
 requires = [
-    "setuptools >= 61.0",
+    "setuptools >= 78.1.1",
     "wheel",
-    "setuptools_scm[toml]>=6.2",
+    "setuptools_scm[toml]>=9.2.2",
 ]
 build-backend = "setuptools.build_meta"
 
@@ -19,16 +19,16 @@ requires-python = ">=3.7"
 license = {text = "GNU GENERAL PUBLIC LICENSE Version 3"}
 dynamic = ["version"]
 dependencies = [
-    "typer",
-    "pandas",
-    "cookiecutter",
-    "setuptools_scm",
-    "seaborn",
-    "trackhub",
-    "Pillow",
-    "loguru",
+    "typer>=0.21.1",
+    "pandas>=1.5.3,<3.0.0",
+    "cookiecutter>=2.0,<3.0.0",
+    "setuptools_scm>=9.2.2",
+    "seaborn>=0.11.0,<=0.13.0",
+    "trackhub>=1.0",
+    "Pillow>=12.1.0",
+    "loguru>=0.7.0",
     "pydantic>=2.0",
-    "pandera>=0.18",
+    "pandera>=0.29.0",
 ]
 
 [project.optional-dependencies]
