@@ -3,5 +3,7 @@
 .vscode
 _version.py
 .ipynb_checkpoints
-site/*
-build/*
+site/
+build/
+.venv/
+__pycache__/
