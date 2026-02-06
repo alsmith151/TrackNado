@@ -82,3 +82,26 @@ def test_builder_serialization(sample_bigwig, tmp_dir):
     file_builder = HubBuilder.from_json(json_path)
     assert len(file_builder.tracks) == 1
     assert file_builder.tracks[0].path == sample_bigwig
+
+
+def test_builder_sort_metadata(sample_bigwig):
+    builder = (
+        HubBuilder()
+        .add_tracks([sample_bigwig], zeta="Z", alpha="A")
+        .with_sort_metadata(True)
+    )
+
+    df = builder._prepare_design_df()
+    assert list(df.columns[:4]) == ["fn", "path", "name", "ext"]
+    assert list(df.columns[4:]) == ["alpha", "zeta"]
+
+
+def test_builder_convert_requires_chrom_sizes(sample_bigwig, tmp_dir):
+    builder = HubBuilder().add_tracks([sample_bigwig]).with_convert_files(True)
+
+    with pytest.raises(ValueError, match="chrom_sizes must be provided"):
+        builder.build(
+            name="TestHub",
+            genome="hg38",
+            outdir=tmp_dir / "hub_out",
+        )

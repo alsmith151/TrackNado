@@ -2,6 +2,15 @@ import pytest
 import pathlib
 import tempfile
 import shutil
+import sys
+
+PROJECT_ROOT = pathlib.Path(__file__).resolve().parents[1]
+BUILD_LIB = PROJECT_ROOT / "build" / "lib"
+
+if str(BUILD_LIB) in sys.path:
+    sys.path.remove(str(BUILD_LIB))
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 @pytest.fixture
 def tmp_dir():

@@ -3,10 +3,14 @@ import re
 from pathlib import Path
 from typing import Callable
 
-def determine_seqnado_assay(parts_lower: list[str]) -> str:
+def determine_seqnado_assay(parts: list[str]) -> str:
+    parts_lower = [p.lower() for p in parts]
     for i, part in enumerate(parts_lower):
-        if part == 'seqnado_output':
-            return parts_lower[i+1]
+        if part == "seqnado_output" and i + 1 < len(parts):
+            return parts[i + 1]
+
+    if len(parts) >= 4:
+        return parts[-4]
     
     raise ValueError("Could not determine assay from path")
 
@@ -18,10 +22,9 @@ def from_seqnado_path(path: Path) -> dict[str, str]:
     Example: .../seqnado_output/atac/bigwigs/atac_tn5/cpm/sample1.bigWig
     """
     metadata = {}
-    parts = path.parts
-    parts_lower = [p.lower() for p in parts]
+    parts = list(path.parts)
 
-    metadata["assay"] = determine_seqnado_assay(parts_lower)
+    metadata["assay"] = determine_seqnado_assay(parts)
     metadata["norm"] = parts[-2]
     metadata["method"] = parts[-3]
     metadata['file_type'] = parts[-4]   # bigwigs or peaks for now
