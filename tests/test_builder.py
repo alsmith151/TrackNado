@@ -105,3 +105,58 @@ def test_builder_convert_requires_chrom_sizes(sample_bigwig, tmp_dir):
             genome="hg38",
             outdir=tmp_dir / "hub_out",
         )
+
+
+def test_builder_unique_names_for_duplicate_basenames(tmp_dir):
+    p1 = tmp_dir / "run_a" / "sample.bigWig"
+    p2 = tmp_dir / "run_b" / "sample.bigWig"
+    p1.parent.mkdir(parents=True)
+    p2.parent.mkdir(parents=True)
+    p1.touch()
+    p2.touch()
+
+    builder = HubBuilder().add_tracks([p1, p2])
+    df = builder._prepare_design_df()
+
+    assert len(df["name"].unique()) == 2
+    assert all(name.startswith("sample") for name in df["name"])
+
+
+def test_builder_respects_user_unique_names(tmp_dir):
+    p1 = tmp_dir / "a.bigWig"
+    p2 = tmp_dir / "b.bigWig"
+    p1.touch()
+    p2.touch()
+
+    df = pd.DataFrame(
+        [
+            {"fn": str(p1), "name": "track_a"},
+            {"fn": str(p2), "name": "track_b"},
+        ]
+    )
+    builder = HubBuilder().add_tracks_from_df(df)
+    design = builder._prepare_design_df()
+
+    assert set(design["name"]) == {"track_a", "track_b"}
+
+
+def test_builder_fill_missing_group_values(tmp_dir):
+    p1 = tmp_dir / "s1.bigWig"
+    p2 = tmp_dir / "s2.bigWig"
+    p1.touch()
+    p2.touch()
+    df = pd.DataFrame(
+        [
+            {"fn": str(p1), "condition": "treated"},
+            {"fn": str(p2), "condition": None},
+        ]
+    )
+    builder = (
+        HubBuilder()
+        .add_tracks_from_df(df)
+        .group_by("condition")
+        .with_missing_groups("UNSET", "condition")
+    )
+
+    design = builder._prepare_design_df()
+    assert set(design["condition"]) == {"treated", "UNSET"}

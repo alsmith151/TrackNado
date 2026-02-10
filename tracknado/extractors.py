@@ -3,6 +3,8 @@ import re
 from pathlib import Path
 from typing import Callable
 
+MetadataExtractor = Callable[[Path], dict[str, str]]
+
 def determine_seqnado_assay(parts: list[str]) -> str:
     parts_lower = [p.lower() for p in parts]
     for i, part in enumerate(parts_lower):
@@ -46,7 +48,7 @@ def from_seqnado_path(path: Path) -> dict[str, str]:
 
     return metadata
 
-def from_filename_pattern(pattern: str) -> Callable[[Path], dict[str, str]]:
+def from_filename_pattern(pattern: str) -> MetadataExtractor:
     """Create extractor from regex pattern with named groups."""
     regex = re.compile(pattern)
     
@@ -58,7 +60,7 @@ def from_filename_pattern(pattern: str) -> Callable[[Path], dict[str, str]]:
         
     return extractor
 
-def from_parent_dirs(depth: int = 1, names: list[str] = None) -> Callable[[Path], dict[str, str]]:
+def from_parent_dirs(depth: int = 1, names: list[str] = None) -> MetadataExtractor:
     """Extract metadata from parent directory names.
     
     Args:
@@ -76,4 +78,32 @@ def from_parent_dirs(depth: int = 1, names: list[str] = None) -> Callable[[Path]
             current = current.parent
         return metadata
         
+    return extractor
+
+
+def compose_extractors(
+    *extractors: MetadataExtractor, overwrite: bool = True
+) -> MetadataExtractor:
+    """Compose multiple extractors into one extractor function."""
+    def extractor(path: Path) -> dict[str, str]:
+        metadata: dict[str, str] = {}
+        for fn in extractors:
+            extracted = fn(path)
+            if overwrite:
+                metadata.update(extracted)
+            else:
+                for key, value in extracted.items():
+                    metadata.setdefault(key, value)
+        return metadata
+
+    return extractor
+
+
+def with_static_metadata(**values: str) -> MetadataExtractor:
+    """Create a simple metadata stub extractor with static key/value pairs."""
+    metadata = {k: str(v) for k, v in values.items()}
+
+    def extractor(path: Path) -> dict[str, str]:
+        return metadata.copy()
+
     return extractor

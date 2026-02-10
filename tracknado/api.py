@@ -447,6 +447,7 @@ class HubGenerator:
         )
 
         self.trackdb = trackhub.TrackDb()
+        self._used_track_names: set[str] = set()
         _genome = self._get_genome_file()  # type: ignore
         _genomes_file = trackhub.GenomesFile()
 
@@ -562,14 +563,30 @@ class HubGenerator:
                 }
             )
 
+        base_name = "".join([trackhub.helpers.sanitize(track.name), suffix])
+        unique_name = self._ensure_unique_track_name(base_name)
+
         return trackhub.Track(
-            name="".join([trackhub.helpers.sanitize(track.name), suffix]),
+            name=unique_name,
             shortLabel=" ".join(re.split(r"[.|_|\s+|-]", track.name)),
             longLabel=" ".join(re.split(r"[.|_|\s+|-]", track.name)),
             source=str(track.path),
             tracktype=track.ext,
             **extra_kwargs,
         )
+
+    def _ensure_unique_track_name(self, name: str) -> str:
+        """Ensure UCSC track IDs are unique after sanitization."""
+        if name not in self._used_track_names:
+            self._used_track_names.add(name)
+            return name
+
+        idx = 2
+        while f"{name}_{idx}" in self._used_track_names:
+            idx += 1
+        unique = f"{name}_{idx}"
+        self._used_track_names.add(unique)
+        return unique
 
     def _get_genome_file(self) -> trackhub.Genome:
         if not self.custom_genome:

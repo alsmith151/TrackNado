@@ -26,3 +26,17 @@ TrackNado supports several built-in extractors:
 - `from_seqnado_path`: Expects a standard bioinformatic directory structure.
 - `from_filename_pattern`: Uses regex to pull metadata from names.
 - `from_parent_dirs`: Uses the names of parent directories as metadata values.
+- `with_static_metadata`: Adds constant key/value metadata (useful as a stub/default layer).
+- `compose_extractors`: Chains extractors in order and resolves key collisions with `overwrite=True/False`.
+
+### Stubbing + Layering Metadata
+
+```python
+import tracknado as tn
+
+extractor = tn.compose_extractors(
+    tn.with_static_metadata(condition="NA", replicate="1"),
+    tn.from_filename_pattern(r"(?P<sample>.+?)_(?P<condition>.+?)\."),
+    overwrite=False,  # keep defaults when a field is missing
+)
+```

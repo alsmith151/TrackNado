@@ -1,6 +1,12 @@
 import pytest
 from pathlib import Path
-from tracknado.extractors import from_seqnado_path, from_filename_pattern, from_parent_dirs
+from tracknado.extractors import (
+    from_seqnado_path,
+    from_filename_pattern,
+    from_parent_dirs,
+    compose_extractors,
+    with_static_metadata,
+)
 
 def test_from_seqnado_path(seqnado_structure):
     metadata = from_seqnado_path(seqnado_structure)
@@ -49,3 +55,28 @@ def test_from_seqnado_path_rna(tmp_dir):
     metadata = from_seqnado_path(path)
     assert metadata["assay"] == "RNA"
     assert metadata["strand"] == "plus"
+
+
+def test_compose_extractors_no_overwrite():
+    path = Path("K562_CTCF.bigWig")
+    e1 = with_static_metadata(sample="DEFAULT", assay="ATAC")
+    e2 = from_filename_pattern(r"(?P<sample>.+?)_(?P<mark>.+?)\.")
+
+    extractor = compose_extractors(e1, e2, overwrite=False)
+    metadata = extractor(path)
+
+    assert metadata["sample"] == "DEFAULT"
+    assert metadata["assay"] == "ATAC"
+    assert metadata["mark"] == "CTCF"
+
+
+def test_compose_extractors_with_overwrite():
+    path = Path("K562_CTCF.bigWig")
+    e1 = with_static_metadata(sample="DEFAULT")
+    e2 = from_filename_pattern(r"(?P<sample>.+?)_(?P<mark>.+?)\.")
+
+    extractor = compose_extractors(e1, e2, overwrite=True)
+    metadata = extractor(path)
+
+    assert metadata["sample"] == "K562"
+    assert metadata["mark"] == "CTCF"

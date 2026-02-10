@@ -58,3 +58,20 @@ You can combine these strategies for complex hubs. This will create folders for 
 | data/s1_wt.bw | RNA-seq | S1 | WT | RNA S1 WT |
 | data/s1_ko.bw | RNA-seq | S1 | KO | RNA S1 KO |
 | data/atp_s1.bw | ATAC-seq | S1 | WT | ATAC S1 WT |
+
+## Handling Missing Group Values
+
+If some tracks have missing values in grouping columns, assign a catch-all label so they remain visible in the hub.
+
+```python
+import tracknado as tn
+
+builder = (
+    tn.HubBuilder()
+    .add_tracks_from_df(df)
+    .group_by("condition")
+    .with_missing_groups("UNASSIGNED", "condition")
+)
+```
+
+Tip: for tracks that belong to different logical families, use `as_supertrack=True` for a high-level split first, then subgroup within each family.

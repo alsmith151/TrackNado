@@ -1,6 +1,6 @@
 from __future__ import annotations
 import pathlib
-from typing import Callable, Any, Optional
+from typing import Callable, Any, Optional, Union
 import pandas as pd
 from .models import Track, TrackGroup
 from .schemas import TrackDataFrameSchema, TrackDesignSchema
@@ -31,6 +31,8 @@ class HubBuilder(BaseModel):
     chrom_sizes: Optional[pathlib.Path] = Field(None)
     custom_genome_config: dict[str, Any] = Field(default_factory=dict)
     sort_metadata: bool = Field(False)
+    missing_group_label: str | None = Field(None)
+    missing_group_columns: list[str] = Field(default_factory=list)
 
     # Non-serialized field for extractors (functions can't be JSON serialized easily)
     metadata_extractors: list[Callable[[pathlib.Path], dict[str, str]]] = Field(
@@ -65,7 +67,7 @@ class HubBuilder(BaseModel):
             metadata = {
                 k: str(v)
                 for k, v in row.items()
-                if k not in [fn_col, "ext", "path", "name"]
+                if k not in [fn_col, "ext", "path", "name"] and pd.notna(v)
             }
             track = Track(path=path, metadata=metadata)
             if "name" in row and pd.notna(row["name"]):
@@ -127,6 +129,17 @@ class HubBuilder(BaseModel):
     def with_convert_files(self, enabled: bool = True) -> HubBuilder:
         """Enable or disable implicit track conversion."""
         self.convert_files = enabled
+        return self
+
+    def with_missing_groups(
+        self, label: str = "NA", *columns: str
+    ) -> HubBuilder:
+        """Replace missing grouping values with a label before hub generation.
+
+        If `columns` are not provided, applies to all active grouping columns.
+        """
+        self.missing_group_label = label
+        self.missing_group_columns = list(columns)
         return self
 
     def with_chrom_sizes(self, path: Union[str, pathlib.Path]) -> HubBuilder:
@@ -266,6 +279,8 @@ class HubBuilder(BaseModel):
             data.append(row)
 
         df = pd.DataFrame(data)
+        self._ensure_unique_track_names(df)
+        self._fill_missing_group_values(df)
         
         # Sort columns alphabetically if requested (keeping standard columns first)
         if self.sort_metadata:
@@ -275,6 +290,71 @@ class HubBuilder(BaseModel):
             df = df[existing_standard + other_cols]
         
         return df
+
+    @staticmethod
+    def _normalize_name(value: str) -> str:
+        return "".join(ch if ch.isalnum() else "_" for ch in value).strip("_")
+
+    @classmethod
+    def _append_path_suffix(cls, base: str, path: pathlib.Path, depth: int) -> str:
+        parents = list(path.parents)
+        # parents[0] is the immediate parent directory
+        parts = [p.name for p in parents[:depth] if p.name]
+        if not parts:
+            parts = [path.name]
+        suffix = "__".join(reversed(parts))
+        suffix = cls._normalize_name(suffix)
+        return f"{base}__{suffix}" if suffix else base
+
+    @classmethod
+    def _ensure_unique_track_names(cls, df: pd.DataFrame) -> None:
+        """Ensure `name` is unique while keeping names readable."""
+        if df.empty or "name" not in df.columns:
+            return
+
+        names = df["name"].astype(str).tolist()
+        paths = [pathlib.Path(p) for p in df["fn"].tolist()]
+        counts = pd.Series(names).value_counts()
+        used: set[str] = set()
+
+        for i, name in enumerate(names):
+            candidate = name
+            if counts[name] > 1 or candidate in used:
+                path = paths[i]
+                depth = 1
+                while candidate in used:
+                    candidate = cls._append_path_suffix(name, path, depth)
+                    depth += 1
+                    if depth > len(path.parents) + 1:
+                        candidate = f"{name}__{i + 1}"
+                        break
+            used.add(candidate)
+            names[i] = candidate
+
+        df["name"] = names
+
+    def _fill_missing_group_values(self, df: pd.DataFrame) -> None:
+        """Fill NA/empty values in grouping columns with a configured label."""
+        if not self.missing_group_label:
+            return
+
+        if self.missing_group_columns:
+            target_columns = list(dict.fromkeys(self.missing_group_columns))
+        else:
+            target_columns = list(
+                dict.fromkeys(
+                    [
+                        *self.group_by_cols,
+                        *self.supergroup_by_cols,
+                        *self.overlay_by_cols,
+                    ]
+                )
+            )
+
+        for col in target_columns:
+            if col not in df.columns:
+                continue
+            df[col] = df[col].replace("", pd.NA).fillna(self.missing_group_label)
 
     def build(
         self,
