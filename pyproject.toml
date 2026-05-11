@@ -1,8 +1,8 @@
 [build-system]
 requires = [
-    "setuptools>=78.1.1",
+    "setuptools>=82.0.1",
     "wheel",
-    "setuptools_scm[toml]>=9.2.2",
+    "setuptools_scm[toml]>=10.0.5",
 ]
 build-backend = "setuptools.build_meta"
 
@@ -19,16 +19,16 @@ requires-python = ">=3.10"
 license = {text = "GNU GENERAL PUBLIC LICENSE Version 3"}
 dynamic = ["version"]
 dependencies = [
-    "typer>=0.21.1",
-    "pandas>=1.5.3,<3.0.0",
-    "cookiecutter>=2.0,<3.0.0",
-    "setuptools_scm>=9.2.2",
-    "seaborn>=0.11.0,<=0.13.2",
-    "trackhub>=1.0",
-    "Pillow>=12.1.0",
-    "loguru>=0.7.0",
-    "pydantic>=2.0",
-    "pandera>=0.29.0",
+    "typer==0.25.1",
+    "pandas==3.0.2",
+    "cookiecutter==2.7.1",
+    "setuptools_scm==10.0.5",
+    "seaborn==0.13.2",
+    "trackhub==1.0",
+    "Pillow==12.1.0",
+    "loguru==0.7.0",
+    "pydantic==2.0",
+    "pandera==0.31.1",
 ]
 
 [project.optional-dependencies]
@@ -38,7 +38,7 @@ docs = [
     "mkdocstrings[python]",
 ]
 test = [
-    "pytest>=7.0",
+    "pytest>=9.0.3",
 ]
 
 
