@@ -19,7 +19,7 @@ requires-python = ">=3.10"
 license = {text = "GNU GENERAL PUBLIC LICENSE Version 3"}
 dynamic = ["version"]
 dependencies = [
-    "typer==0.25.1",
+    "typer==0.26.3",
     "pandas>=2,<3.0.0",
     "cookiecutter==2.7.1",
     "setuptools_scm==10.0.5",
