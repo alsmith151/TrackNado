@@ -28,7 +28,7 @@ dependencies = [
     "Pillow==12.1.0",
     "loguru==0.7.3",
     "pydantic>=2.0",
-    "pandera==0.31.1",
+    "pandera==0.32.0",
 ]
 
 [project.optional-dependencies]
