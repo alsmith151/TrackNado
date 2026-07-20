@@ -11,6 +11,7 @@
 ## 🚀 Key Features
 
 -   **Fluent Python API**: A declarative `HubBuilder` for intuitive and reproducible hub construction.
+-   **Shared Build Path**: The CLI and Python API use the same builder setup helper, so flags and method calls stay in sync.
 -   **Automated Conversion**: Built-in, container-backed conversion for **BED → bigBed** and **GTF/GFF → bigGenePred** (with codon display).
 -   **Custom Genomes (Assembly Hubs)**: Deep support for private assemblies with `.2bit` integration.
 -   **Multi-Dimensional Grouping**: Seamlessly create SuperTracks, CompositeTracks (matrix display), and OverlayTracks.
@@ -32,7 +33,9 @@ TrackNado will automatically attempt to use UCSC tools from your `$PATH`. If not
 
 ## 🛠️ Quick Start (CLI)
 
-The CLI is powered by Typer and provides a modern, colorized experience with rich help strings.
+The CLI is powered by Typer and uses the same builder pipeline as the Python API, so the options map directly to the fluent methods.
+
+Use `--grouping-regex` when your grouping columns are encoded in the file name rather than a metadata table.
 
 ### 1. Generate a Metadata Template
 ```bash

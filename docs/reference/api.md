@@ -4,6 +4,7 @@ This page provides the API reference for TrackNado.
 
 ## Hub Building
 ::: tracknado.builder.HubBuilder
+::: tracknado.builder.configure_builder_from_inputs
 ::: tracknado.api.HubGenerator
 ::: tracknado.api.TrackDesign
 

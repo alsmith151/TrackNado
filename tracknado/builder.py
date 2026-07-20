@@ -2,13 +2,12 @@ from __future__ import annotations
 import pathlib
 from typing import Callable, Any, Optional, Union
 import pandas as pd
-from .models import Track, TrackGroup
-from .schemas import TrackDataFrameSchema, TrackDesignSchema
+from .models import Track
+from .schemas import TrackDataFrameSchema
 from .api import TrackDesign, HubGenerator
 from loguru import logger
 
 from pydantic import BaseModel, Field, ConfigDict
-import json
 
 
 class HubBuilder(BaseModel):
@@ -84,6 +83,13 @@ class HubBuilder(BaseModel):
         self.metadata_extractors.append(fn)
         return self
 
+    def with_grouping_regex(self, pattern: str) -> HubBuilder:
+        """Extract grouping fields from file names using a regex pattern."""
+        from .extractors import from_filename_pattern
+
+        self.metadata_extractors.append(from_filename_pattern(pattern))
+        return self
+
     def group_by(self, *columns: str, as_supertrack: bool = False) -> "HubBuilder":
         """Specify columns to group by. If as_supertrack is True, these columns
         will be used for SuperTracks instead of dimensions in a CompositeTrack.
@@ -99,7 +105,7 @@ class HubBuilder(BaseModel):
         name: str,
         twobit_file: str | pathlib.Path,
         organism: str,
-        default_position: str = "chr1:1000-2000",
+        default_position: str = "chr1:10000-20000",
     ) -> "HubBuilder":
         """Configure a custom genome (Assembly Hub) for this hub."""
         self.custom_genome_config = {
@@ -161,6 +167,16 @@ class HubBuilder(BaseModel):
             self.overlay_by_cols = sorted(
                 list(set(self.overlay_by_cols + other.overlay_by_cols))
             )
+            if not self.convert_files:
+                self.convert_files = other.convert_files
+            if not self.chrom_sizes:
+                self.chrom_sizes = other.chrom_sizes
+            if not self.custom_genome_config:
+                self.custom_genome_config = other.custom_genome_config.copy()
+            if not self.missing_group_label:
+                self.missing_group_label = other.missing_group_label
+            if not self.missing_group_columns:
+                self.missing_group_columns = list(other.missing_group_columns)
             # Merge extractors
             for ex in other.metadata_extractors:
                 if ex not in self.metadata_extractors:
@@ -400,3 +416,71 @@ class HubBuilder(BaseModel):
         )
 
         return hub
+
+
+def configure_builder_from_inputs(
+    input_files: list[str] | list[pathlib.Path] | None = None,
+    metadata: str | pathlib.Path | None = None,
+    seqnado: bool = False,
+    grouping_regex: str | None = None,
+    convert: bool = False,
+    chrom_sizes: str | pathlib.Path | None = None,
+    supergroup_by: list[str] | None = None,
+    subgroup_by: list[str] | None = None,
+    overlay_by: list[str] | None = None,
+    color_by: str | None = None,
+    sort_metadata: bool = False,
+    custom_genome: bool = False,
+    twobit: str | pathlib.Path | None = None,
+    organism: str | None = None,
+    default_pos: str = "chr1:10000-20000",
+) -> HubBuilder:
+    """Build a HubBuilder from the same inputs accepted by the CLI."""
+    builder = HubBuilder().with_convert_files(convert)
+
+    if not metadata and not seqnado and not grouping_regex:
+        logger.warning(
+            "No metadata source was provided, so no grouping can be performed."
+        )
+
+    if chrom_sizes:
+        builder.with_chrom_sizes(chrom_sizes)
+
+    if metadata:
+        df = pd.read_csv(metadata, sep=None, engine="python")
+        builder.add_tracks_from_df(df)
+    elif input_files:
+        builder.add_tracks(input_files)
+    else:
+        raise ValueError("Must provide input_files or metadata")
+
+    if seqnado:
+        from .extractors import from_seqnado_path
+
+        builder.with_metadata_extractor(from_seqnado_path)
+
+    if grouping_regex:
+        builder.with_grouping_regex(grouping_regex)
+
+    if supergroup_by:
+        builder.group_by(*supergroup_by, as_supertrack=True)
+    if subgroup_by:
+        builder.group_by(*subgroup_by)
+    if overlay_by:
+        builder.overlay_by(*overlay_by)
+    if color_by:
+        builder.color_by(color_by)
+    if sort_metadata:
+        builder.with_sort_metadata()
+
+    if custom_genome or twobit:
+        if not twobit or not organism:
+            raise ValueError("twobit and organism are required for custom genomes")
+        builder.with_custom_genome(
+            name="HUB",
+            twobit_file=twobit,
+            organism=organism,
+            default_position=default_pos,
+        )
+
+    return builder

@@ -42,7 +42,21 @@ def test_builder_prepare_df(seqnado_structure):
     assert df.iloc[0]["method"] == "ATAC_Tn5"
 
 def test_builder_merge(sample_bigwig, sample_bigbed):
-    b1 = HubBuilder().add_tracks([sample_bigwig], set="A").group_by("cell").color_by("cell")
+    b1 = (
+        HubBuilder()
+        .add_tracks([sample_bigwig], set="A")
+        .group_by("cell")
+        .color_by("cell")
+        .with_convert_files(True)
+    )
+    b1.chrom_sizes = sample_bigwig.parent / "hg38.chrom.sizes"
+    b1.with_custom_genome(
+        name="HUB",
+        twobit_file=sample_bigwig.parent / "genome.2bit",
+        organism="Human",
+    )
+    b1.with_missing_groups("UNSET", "cell")
+
     b2 = HubBuilder().add_tracks([sample_bigbed], set="B").group_by("mark")
     
     merged = b1.merge(b2)
@@ -53,6 +67,10 @@ def test_builder_merge(sample_bigwig, sample_bigbed):
     assert "cell" in merged.group_by_cols
     assert "mark" in merged.group_by_cols
     assert merged.color_by_col == "cell"
+    assert merged.convert_files is True
+    assert merged.chrom_sizes == sample_bigwig.parent / "hg38.chrom.sizes"
+    assert merged.custom_genome_config["genome_organism"] == "Human"
+    assert merged.missing_group_label == "UNSET"
 
 def test_builder_serialization(sample_bigwig, tmp_dir):
     builder = (

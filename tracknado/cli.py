@@ -1,12 +1,10 @@
 from __future__ import annotations
-import os
 import pathlib
 from typing import List, Optional
 from loguru import logger
 import pandas as pd
 import typer
 from rich.console import Console
-from rich.logging import RichHandler
 
 import tracknado as tn
 
@@ -26,6 +24,9 @@ def create(
     ),
     seqnado: bool = typer.Option(
         False, "--seqnado", help="Automatically extract sample metadata using the seqnado directory structure convention."
+    ),
+    grouping_regex: Optional[str] = typer.Option(
+        None, "--grouping-regex", help="Regex with named groups for extracting grouping metadata from file names."
     ),
     hub_name: str = typer.Option(
         "HUB", "--hub-name", help="The short identifier for the hub (used in UCSC URL)."
@@ -95,51 +96,28 @@ def create(
 
     logger.info("Initializing TrackNado")
     
-    builder = tn.HubBuilder()
-    builder.convert_files = convert
-    builder.chrom_sizes = chrom_sizes
-    
-    # 1. Add tracks
-    if metadata:
-        logger.info(f"Loading metadata from {metadata}")
-        df = pd.read_csv(metadata, sep=None, engine="python")
-        builder.add_tracks_from_df(df)
-    elif input_files:
-        logger.info(f"Adding {len(input_files)} input files")
-        builder.add_tracks(input_files)
-    else:
-        console.print("[red]Error: Must provide --input-files or --metadata[/red]")
-        raise typer.Exit(code=1)
-        
-    # 2. Add extractors
-    if seqnado:
-        builder.with_metadata_extractor(tn.from_seqnado_path)
-        
-    # 3. Configure groupings
-    if supergroup_by:
-        builder.group_by(*supergroup_by, as_supertrack=True)
-    if subgroup_by:
-        builder.group_by(*subgroup_by)
-    if overlay_by:
-        builder.overlay_by(*overlay_by)
-    if color_by:
-        builder.color_by(color_by)
-    if sort_metadata:
-        builder.with_sort_metadata()
-        
-    # 4. Custom Genome
-    if custom_genome or twobit:
-        if not twobit or not organism:
-             console.print("[red]Error: --twobit and --organism are required for custom genomes[/red]")
-             raise typer.Exit(code=1)
-        builder.with_custom_genome(
-            name=genome_name,
-            twobit_file=twobit,
+    try:
+        builder = tn.configure_builder_from_inputs(
+            input_files=input_files,
+            metadata=metadata,
+            seqnado=seqnado,
+            grouping_regex=grouping_regex,
+            convert=convert,
+            chrom_sizes=chrom_sizes,
+            supergroup_by=supergroup_by,
+            subgroup_by=subgroup_by,
+            overlay_by=overlay_by,
+            color_by=color_by,
+            sort_metadata=sort_metadata,
+            custom_genome=custom_genome,
+            twobit=twobit,
             organism=organism,
-            default_position=default_pos
+            default_pos=default_pos,
         )
-        
-    # 5. Build
+    except ValueError as exc:
+        console.print(f"[red]Error: {exc}[/red]")
+        raise typer.Exit(code=1)
+
     logger.info(f"Building hub '{hub_name}' for {genome_name}")
     hub = builder.build(
         name=hub_name,
@@ -234,9 +212,12 @@ def validate(
             # Fallback to internal structure check
             validator = tn.HubValidator(path)
             valid = validator.validate_all()
-            for err in validator.errors: logger.error(err)
-            for warn in validator.warnings: logger.warning(warn)
-            if not valid: raise typer.Exit(code=1)
+            for err in validator.errors:
+                logger.error(err)
+            for warn in validator.warnings:
+                logger.warning(warn)
+            if not valid:
+                raise typer.Exit(code=1)
             logger.info("Hub structure is valid (standard structure)")
             return
         path = hub_files[0]
