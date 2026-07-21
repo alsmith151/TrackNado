@@ -2,6 +2,10 @@
 
 TrackNado is designed to be easy to use whether you prefer the command line or a Python API.
 
+Both entry points use the same builder configuration path, so the CLI flags and fluent API methods stay aligned.
+
+If your grouping values live in file names, pass `--grouping-regex` in the CLI or `with_grouping_regex(...)` from Python.
+
 ## Installation
 
 ```bash
