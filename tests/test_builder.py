@@ -41,6 +41,26 @@ def test_builder_prepare_df(seqnado_structure):
     assert df.iloc[0]["norm"] == "CPM"
     assert df.iloc[0]["method"] == "ATAC_Tn5"
 
+def test_builder_build_raises_clear_error_for_bam_without_index(tmp_dir):
+    bam = tmp_dir / "sample.bam"
+    bam.touch()
+
+    builder = HubBuilder().add_tracks([bam])
+
+    with pytest.raises(ValueError, match=r"\.bai"):
+        builder.build(name="HUB", genome="hg38", outdir=tmp_dir / "hub_out")
+
+
+def test_builder_build_succeeds_for_bam_with_index(tmp_dir):
+    bam = tmp_dir / "sample.bam"
+    bam.touch()
+    (tmp_dir / "sample.bam.bai").touch()
+
+    builder = HubBuilder().add_tracks([bam])
+    hub = builder.build(name="HUB", genome="hg38", outdir=tmp_dir / "hub_out")
+    assert hub is not None
+
+
 def test_builder_merge(sample_bigwig, sample_bigbed):
     b1 = (
         HubBuilder()

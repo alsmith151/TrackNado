@@ -37,10 +37,31 @@ The CLI is powered by Typer and uses the same builder pipeline as the Python API
 
 Use `--grouping-regex` when your grouping columns are encoded in the file name rather than a metadata table.
 
-### 1. Generate a Metadata Template
+### 1. Generate a Metadata Table
+
+Point `design` at your track files to auto-generate an editable metadata CSV, pre-filled with `fn`/`name`/`ext` (and anything `--seqnado`/`--grouping-regex` can extract) so you're not starting from scratch:
+
 ```bash
-tracknado create --template tracks.csv
+tracknado design -i data/*.bw -i data/*.bb -o tracks.csv
 ```
+
+```csv
+fn,name,ext,color,supertrack,composite,overlay
+data/k562_ctcf.bw,k562_ctcf,bigWig,,,,
+data/gm12878_ctcf.bw,gm12878_ctcf,bigWig,,,,
+data/peaks.bb,peaks,bigBed,,,,
+```
+
+Fill in the blank columns by hand — e.g. `color` (`R,G,B`), `supertrack`/`composite`/`overlay` (for grouping) — and add any extra metadata columns you want:
+
+```csv
+fn,name,ext,color,supertrack,composite,overlay
+data/k562_ctcf.bw,K562 CTCF,bigWig,"255,0,0",ChIP-seq,K562,CTCF
+data/gm12878_ctcf.bw,GM12878 CTCF,bigWig,"0,0,255",ChIP-seq,GM12878,CTCF
+data/peaks.bb,Called Peaks,bigBed,,Annotation,,
+```
+
+(Prefer a blank starting point instead? `tracknado create --template tracks.csv` writes just the header row.)
 
 ### 2. Create a Hub
 ```bash

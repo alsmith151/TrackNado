@@ -259,6 +259,10 @@ class HubBuilder(BaseModel):
                 track.path = new_path
                 track.track_type = "bigGenePred"
 
+    def to_dataframe(self) -> pd.DataFrame:
+        """Return the current tracks (with any extracted metadata) as an editable DataFrame."""
+        return self._prepare_design_df()
+
     def _prepare_design_df(self) -> pd.DataFrame:
         """Convert tracks to the DataFrame format used by TrackDesign."""
         # Metadata extraction is idempotent and safe to call multiple times
@@ -306,6 +310,32 @@ class HubBuilder(BaseModel):
             df = df[existing_standard + other_cols]
         
         return df
+
+    @staticmethod
+    def _validate_index_files(df: pd.DataFrame) -> None:
+        """Ensure companion index files exist for track types that need them.
+
+        UCSC hubs stage BAM tracks alongside a same-named '.bai' index
+        (e.g. 'sample.bam' -> 'sample.bam.bai'); without it, staging fails
+        deep inside the trackhub library with an opaque error. Fail fast here
+        with an actionable message instead.
+        """
+        if "ext" not in df.columns:
+            return
+
+        missing = []
+        for fn in df.loc[df["ext"] == "bam", "fn"]:
+            bam_path = pathlib.Path(fn)
+            bai_path = bam_path.with_name(bam_path.name + ".bai")
+            if not bai_path.exists():
+                missing.append(str(bai_path))
+
+        if missing:
+            raise ValueError(
+                "Missing BAM index file(s). Each '.bam' track needs a same-named "
+                "'.bai' index next to it (e.g. 'sample.bam' -> 'sample.bam.bai'). "
+                f"Run 'samtools index <file.bam>' to generate it. Missing: {', '.join(missing)}"
+            )
 
     @staticmethod
     def _normalize_name(value: str) -> str:
@@ -395,6 +425,7 @@ class HubBuilder(BaseModel):
         self.to_json(outdir / "tracknado_config.json")
 
         df = self._prepare_design_df()
+        self._validate_index_files(df)
 
         design = TrackDesign.from_design(
             df,

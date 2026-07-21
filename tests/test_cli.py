@@ -2,6 +2,8 @@ from pathlib import Path
 
 from typer.testing import CliRunner
 
+import pandas as pd
+
 import tracknado as tn
 from tracknado.cli import app
 
@@ -93,3 +95,34 @@ def test_cli_create_delegates_to_shared_builder_helper(monkeypatch, tmp_dir):
     assert captured["build"]["hub_email"] == "test@example.com"
     assert captured["build"]["description_html"] is None
     assert captured["stage_hub"] is False
+
+
+def test_cli_design_generates_editable_metadata_table(tmp_dir):
+    track_a = tmp_dir / "k562_ctcf.bw"
+    track_b = tmp_dir / "peaks.bb"
+    track_a.touch()
+    track_b.touch()
+    output = tmp_dir / "tracks.csv"
+
+    runner = CliRunner()
+    result = runner.invoke(
+        app,
+        [
+            "design",
+            "-i",
+            str(track_a),
+            "-i",
+            str(track_b),
+            "-o",
+            str(output),
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    df = pd.read_csv(output)
+    assert list(df["fn"]) == [str(track_a), str(track_b)]
+    assert list(df["name"]) == ["k562_ctcf", "peaks"]
+    assert list(df["ext"]) == ["bigWig", "bigBed"]
+    for col in ["color", "supertrack", "composite", "overlay"]:
+        assert col in df.columns
+    assert "path" not in df.columns

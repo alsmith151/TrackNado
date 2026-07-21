@@ -119,13 +119,17 @@ def create(
         raise typer.Exit(code=1)
 
     logger.info(f"Building hub '{hub_name}' for {genome_name}")
-    hub = builder.build(
-        name=hub_name,
-        genome=genome_name,
-        outdir=output,
-        hub_email=hub_email,
-        description_html=description
-    )
+    try:
+        hub = builder.build(
+            name=hub_name,
+            genome=genome_name,
+            outdir=output,
+            hub_email=hub_email,
+            description_html=description
+        )
+    except ValueError as exc:
+        console.print(f"[red]Error: {exc}[/red]")
+        raise typer.Exit(code=1)
     
     logger.info("Staging hub files")
     hub.stage_hub(remove_existing=remove_existing)
@@ -133,6 +137,47 @@ def create(
     logger.info(f"Hub created successfully at {output}")
     hub_url = f"{url_prefix.strip('/')}/{str(output).strip('/')}/{hub_name}.hub.txt"
     logger.info(f"Hub URL: {hub_url}")
+
+@app.command()
+def design(
+    input_files: List[pathlib.Path] = typer.Option(
+        ..., "--input-files", "-i", help="Track files (bigWig, bigBed, BAM, etc.) to generate a metadata table for."
+    ),
+    output: pathlib.Path = typer.Option(
+        ..., "--output", "-o", help="Path to write the editable metadata CSV/TSV to."
+    ),
+    seqnado: bool = typer.Option(
+        False, "--seqnado", help="Pre-fill metadata using the seqnado directory structure convention."
+    ),
+    grouping_regex: Optional[str] = typer.Option(
+        None, "--grouping-regex", help="Regex with named groups to pre-fill metadata from file names."
+    ),
+):
+    """
+    Generate an editable metadata table from a set of track files.
+
+    Writes one row per file (fn, name, ext, plus anything extracted via
+    --seqnado/--grouping-regex) with empty color/supertrack/composite/overlay
+    columns ready to fill in and pass to 'tracknado create --metadata'.
+    """
+    builder = tn.HubBuilder().add_tracks(input_files)
+
+    if seqnado:
+        from .extractors import from_seqnado_path
+        builder.with_metadata_extractor(from_seqnado_path)
+
+    if grouping_regex:
+        builder.with_grouping_regex(grouping_regex)
+
+    df = builder.to_dataframe()
+    df = df.drop(columns=["path"], errors="ignore")
+
+    for col in ["color", "supertrack", "composite", "overlay"]:
+        if col not in df.columns:
+            df[col] = ""
+
+    df.to_csv(output, index=False)
+    logger.info(f"Wrote editable metadata table ({len(df)} tracks) to {output}")
 
 @app.command()
 def merge(

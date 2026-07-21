@@ -35,6 +35,17 @@ The main command for generating hubs.
 - `--remove-existing`: Remove any existing hub directory before staging.
 - `--url-prefix`: Base URL used when reporting the final hub URL.
 
+## `tracknado design`
+
+Generates an editable metadata table from a set of track files, so you don't have to build one from scratch.
+
+- `-i, --input-files <PATHS>`: Track files to scan. Repeat the option for multiple inputs.
+- `-o, --output <CSV/TSV>`: Path to write the generated metadata table to.
+- `--seqnado`: Pre-fill metadata using the seqnado directory structure convention.
+- `--grouping-regex`: Pre-fill metadata from file names using named regex groups.
+
+Writes one row per file (`fn`, `name`, `ext`, plus anything extracted) with empty `color`/`supertrack`/`composite`/`overlay` columns ready to fill in and pass to `tracknado create --metadata`.
+
 ## `tracknado merge`
 
 Combines multiple `tracknado_config.json` files into a single hub.
