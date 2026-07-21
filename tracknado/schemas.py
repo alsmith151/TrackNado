@@ -4,7 +4,7 @@ from pandera.typing import Series
 
 class TrackDataFrameSchema(pa.DataFrameModel):
     """Schema for track DataFrames."""
-    fn: Series[str] = pa.Field(description="File path")
+    file_path: Series[str] = pa.Field(description="Path to the track file")
     path: Series[str] | None = pa.Field(nullable=True)
     name: Series[str] | None = pa.Field(nullable=True)
     ext: Series[str] = pa.Field(isin=["bigWig", "bigBed", "bw", "bb", "bigwig", "bigbed", "bed", "gtf", "gff", "bigGenePred"])
@@ -15,7 +15,7 @@ class TrackDataFrameSchema(pa.DataFrameModel):
 
 class TrackDesignSchema(pa.DataFrameModel):
     """Schema for processed track design with groupings."""
-    fn: Series[str]
+    file_path: Series[str]
     path: Series[str]
     name: Series[str]
     ext: Series[str]

@@ -1,24 +1,40 @@
-# Track Conversion
+# File conversion
 
-TrackNado automatically converts common formats to UCSC-compatible indexed files if the conversion flag is set.
+UCSC track hubs work best with indexed formats such as bigWig and bigBed. TrackNado can convert BED files to bigBed and GTF/GFF files to bigGenePred while it builds the hub.
 
-## Supported Formats
+## Convert during a build
 
-*   **BED to BigBed**: Automatically sorts and converts BED files.
-*   **GTF/GFF to BigGenePred**: Converts gene annotations to the `bigGenePred` format, allowing for codon and amino acid display when zoomed in.
+Provide `--convert` and a chromosome-sizes file for the target assembly:
 
-## Usage
-
-### CLI
 ```bash
-tracknado create -i data/*.gtf -o gene_hub --convert --chrom-sizes hg38.chrom.sizes
+tracknado create \
+  -i annotations/genes.gtf \
+  -i peaks/regions.bed \
+  --output my_hub \
+  --genome-name hg38 \
+  --convert \
+  --chrom-sizes hg38.chrom.sizes
 ```
 
-### API
+The chromosome sizes must match the genome assembly and the chromosome names in your input. A mismatch is a common cause of conversion or display failures.
+
+Converted files are written under `my_hub/converted` before staging. The original source files are not changed.
+
+The same configuration in Python is:
+
 ```python
 builder.with_convert_files().with_chrom_sizes("hg38.chrom.sizes")
 ```
 
-## Backend Requirements
+## Tool requirements
 
-TrackNado attempts to find UCSC tools (`bedToBigBed`, `gtfToGenePred`, etc.) in your `$PATH`. If not found, it will automatically pull and run them via **Docker** or **Apptainer**.
+TrackNado looks for the UCSC conversion programs, including `bedToBigBed` and `gtfToGenePred`, on `PATH`. If they are unavailable, it can run them through Docker or Apptainer. Make sure one of these routes is available before running a large conversion job.
+
+## Formats that need preparation
+
+- **bigWig and bigBed** can be included directly.
+- **BED** is converted to bigBed with `--convert`.
+- **GTF/GFF** is converted to bigGenePred with `--convert`.
+- **BAM** needs a same-named `.bai` index next to it, for example `sample.bam.bai`. TrackNado stops early with a clear error if it cannot find the index.
+
+For repeatable production hubs, consider converting and validating data in your analysis workflow, then give TrackNado the finished UCSC-ready files.

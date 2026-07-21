@@ -1,60 +1,72 @@
-# CLI Reference
+# Command-line reference
 
-TrackNado provides a powerful command-line interface for common tasks.
-
-## `tracknado create`
-
-The main command for generating hubs.
-
-### Arguments
-
-- `-i, --input-files <PATHS>`: Paths to track files (BigWig, BAM, BED, GTF, etc.). Repeat the option for multiple inputs.
-- `-m, --metadata <CSV/TSV>`: Path to metadata table.
-- `-o, --output <DIR>`: Output directory for the hub.
-
-### Flags
-
-- `--template`: Generate a metadata template based on input files.
-- `--seqnado`: Extract metadata from a seqnado-style directory layout.
-- `--grouping-regex`: Extract grouping metadata from file names using named regex groups.
-- `--hub-name`: Set the hub short label.
-- `--hub-email`: Set the contact email written into the hub.
-- `--genome-name`: Set the genome assembly name.
-- `--supergroup-by`: Group tracks into top-level SuperTracks.
-- `--subgroup-by`: Group tracks into CompositeTrack dimensions.
-- `--overlay-by`: Group tracks into OverlayTracks.
-- `--color-by`: Choose a metadata column for color assignment.
-- `--convert`: Automatically convert files to UCSC formats.
-- `--chrom-sizes`: Required when using `--convert`.
-- `--custom-genome`: Generate an assembly hub.
-- `--twobit`: Required for custom genomes.
-- `--organism`: Required for custom genomes.
-- `--default-pos`: Set the default viewing position for custom genomes.
-- `--description`: Path to an HTML landing page for the hub.
-- `--sort-metadata`: Sort metadata columns alphabetically.
-- `--remove-existing`: Remove any existing hub directory before staging.
-- `--url-prefix`: Base URL used when reporting the final hub URL.
+Run `tracknado --help` or `tracknado <command> --help` to see the options installed with your version.
 
 ## `tracknado design`
 
-Generates an editable metadata table from a set of track files, so you don't have to build one from scratch.
+Create an editable CSV from track files. It writes one row per input with `file_path`, `name`, and `ext`, plus empty `color`, `supertrack`, `composite`, and `overlay` columns.
 
-- `-i, --input-files <PATHS>`: Track files to scan. Repeat the option for multiple inputs.
-- `-o, --output <CSV/TSV>`: Path to write the generated metadata table to.
-- `--seqnado`: Pre-fill metadata using the seqnado directory structure convention.
-- `--grouping-regex`: Pre-fill metadata from file names using named regex groups.
+```bash
+tracknado design -i tracks/*.bw -o tracks.csv
+```
 
-Writes one row per file (`fn`, `name`, `ext`, plus anything extracted) with empty `color`/`supertrack`/`composite`/`overlay` columns ready to fill in and pass to `tracknado create --metadata`.
+| Option | Meaning |
+| --- | --- |
+| `-i`, `--input-files` | One or more track files. Repeat the option to add another set. |
+| `-o`, `--output` | CSV or TSV path to write. |
+| `--seqnado` | Extract fields from a seqnado-style directory layout. |
+| `--grouping-regex` | Extract named groups from file names. |
+
+## `tracknado create`
+
+Build and stage a hub from either a metadata table or input files.
+
+```bash
+tracknado create --metadata tracks.csv --output my_hub --genome-name hg38
+```
+
+| Option | Meaning |
+| --- | --- |
+| `-i`, `--input-files` | Track files to include. Use this instead of `--metadata` when no table is needed. |
+| `-m`, `--metadata` | CSV or TSV with a `file_path` column. |
+| `-o`, `--output` | Staged hub directory. Required unless creating a template. |
+| `-t`, `--template` | Write a header-only metadata template and exit. |
+| `--hub-name` | Short hub identifier; used in the `.hub.txt` filename. |
+| `--hub-email` | Contact email stored in the hub. |
+| `--genome-name` | Genome assembly identifier, such as `hg38` or `mm10`. |
+| `--supergroup-by` | Metadata field(s) for top-level supertracks. |
+| `--subgroup-by` | Metadata field(s) for composite-track dimensions. |
+| `--overlay-by` | Metadata field(s) for overlay tracks. |
+| `--color-by` | Metadata field used to assign colours. |
+| `--seqnado` | Extract metadata from a seqnado-style path. |
+| `--grouping-regex` | Extract named metadata fields from file names. |
+| `--convert` | Convert BED and GTF/GFF inputs to UCSC formats. |
+| `--chrom-sizes` | Required alongside `--convert`; sizes for the target assembly. |
+| `--custom-genome` | Build an assembly hub. Requires `--twobit` and `--organism`. |
+| `--twobit` | Sequence file for a custom assembly. |
+| `--organism` | Common organism name for a custom assembly. |
+| `--default-pos` | Initial custom-assembly browser position. |
+| `--description` | HTML file to include as the hub landing page. |
+| `--sort-metadata` | Sort non-standard metadata columns in the saved configuration. |
+| `--remove-existing` | Remove the existing output directory before staging. |
+| `--url-prefix` | Base URL printed with the successful build message; it does not upload files. |
 
 ## `tracknado merge`
 
-Combines multiple `tracknado_config.json` files into a single hub.
+Create one hub from the `tracknado_config.json` files produced by earlier builds:
 
-- `--hub-name`, `--genome-name`, and `--hub-email` control the merged hub metadata.
-- `--sort-metadata` and `--remove-existing` mirror the create command behavior.
+```bash
+tracknado merge a/tracknado_config.json b/tracknado_config.json --output merged_hub
+```
+
+Use `--hub-name`, `--genome-name`, and `--hub-email` to set the merged hub metadata. `--sort-metadata` and `--remove-existing` have the same meaning as for `create`.
 
 ## `tracknado validate`
 
-Validates a hub directory or `hub.txt` file.
+Check a staged hub directory or a `.hub.txt` file:
 
-- `--strict`: Treat warnings as errors.
+```bash
+tracknado validate my_hub --strict
+```
+
+`--strict` treats warnings as errors.

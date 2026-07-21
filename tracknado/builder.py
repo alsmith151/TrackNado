@@ -50,11 +50,19 @@ class HubBuilder(BaseModel):
             self.tracks.append(Track(path=path, metadata=common_metadata.copy()))
         return self
 
-    def add_tracks_from_df(self, df: pd.DataFrame, fn_col: str = "fn") -> HubBuilder:
+    def add_tracks_from_df(
+        self, df: pd.DataFrame, file_path_col: str = "file_path"
+    ) -> HubBuilder:
         """Add tracks from a pandas DataFrame."""
         df = df.copy()
-        if fn_col in df.columns and "ext" not in df.columns:
-            df["ext"] = df[fn_col].apply(lambda x: pathlib.Path(x).suffix.strip("."))
+        if file_path_col not in df.columns:
+            raise ValueError(
+                f"Track metadata must include a '{file_path_col}' column."
+            )
+        if file_path_col in df.columns and "ext" not in df.columns:
+            df["ext"] = df[file_path_col].apply(
+                lambda x: pathlib.Path(x).suffix.strip(".")
+            )
 
         try:
             df = TrackDataFrameSchema.validate(df)
@@ -62,11 +70,11 @@ class HubBuilder(BaseModel):
             logger.warning(f"DataFrame validation failed: {e}")
 
         for _, row in df.iterrows():
-            path = pathlib.Path(row[fn_col])
+            path = pathlib.Path(row[file_path_col])
             metadata = {
                 k: str(v)
                 for k, v in row.items()
-                if k not in [fn_col, "ext", "path", "name"] and pd.notna(v)
+                if k not in [file_path_col, "ext", "path", "name"] and pd.notna(v)
             }
             track = Track(path=path, metadata=metadata)
             if "name" in row and pd.notna(row["name"]):
@@ -290,7 +298,7 @@ class HubBuilder(BaseModel):
             ext = extension_mapping.get(ext.lower(), ext)
 
             row = {
-                "fn": str(track.path),
+                "file_path": str(track.path),
                 "path": str(track.path.absolute().resolve()),
                 "name": track.name or track.path.stem,
                 "ext": ext,
@@ -304,7 +312,7 @@ class HubBuilder(BaseModel):
         
         # Sort columns alphabetically if requested (keeping standard columns first)
         if self.sort_metadata:
-            standard_cols = ["fn", "path", "name", "ext"]
+            standard_cols = ["file_path", "path", "name", "ext"]
             existing_standard = [c for c in standard_cols if c in df.columns]
             other_cols = sorted([c for c in df.columns if c not in existing_standard])
             df = df[existing_standard + other_cols]
@@ -324,8 +332,8 @@ class HubBuilder(BaseModel):
             return
 
         missing = []
-        for fn in df.loc[df["ext"] == "bam", "fn"]:
-            bam_path = pathlib.Path(fn)
+        for file_path in df.loc[df["ext"] == "bam", "file_path"]:
+            bam_path = pathlib.Path(file_path)
             bai_path = bam_path.with_name(bam_path.name + ".bai")
             if not bai_path.exists():
                 missing.append(str(bai_path))
@@ -359,7 +367,7 @@ class HubBuilder(BaseModel):
             return
 
         names = df["name"].astype(str).tolist()
-        paths = [pathlib.Path(p) for p in df["fn"].tolist()]
+        paths = [pathlib.Path(p) for p in df["file_path"].tolist()]
         counts = pd.Series(names).value_counts()
         used: set[str] = set()
 

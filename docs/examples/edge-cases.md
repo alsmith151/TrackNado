@@ -1,11 +1,9 @@
-# Complex Edge Cases
+# Mixed inputs and merged builders
 
-Demonstrates merging multiple hubs, handling mixed file types, and reconciling different grouping strategies.
+This script is an implementation-oriented test case rather than a template for production data. It demonstrates two ways of adding metadata—extracting it from paths and supplying a pandas DataFrame—then merges the resulting builders.
 
-Key features:
+It also includes a BED-to-bigBed conversion path, but replaces the actual converter with a mock so the demonstration can run without UCSC tools. Do not use the generated dummy files as a browser-ready hub.
 
-- Merging disparate track designs.
-- Handling overlapping chromosome names.
-- Mixed data types (BAM + BigWig + BigBed). Note: each `.bam` needs a same-named `.bai` index next to it (`sample.bam` -> `sample.bam.bai`, e.g. via `samtools index`) — TrackNado errors clearly at build time if it's missing.
+For a real build, use valid bigWig/bigBed data or enable normal conversion with a matching chromosome-sizes file. BAM files must have a same-named `.bai` index beside them.
 
-[View full source code on GitHub](https://github.com/alsmith151/TrackNado/blob/main/examples/complex_edge_cases.py)
+[View the source](https://github.com/alsmith151/TrackNado/blob/main/examples/complex_edge_cases.py)

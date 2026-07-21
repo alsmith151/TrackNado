@@ -74,7 +74,7 @@ def run_complex_scenario():
     
     # Setup Builder B: Using manual DataFrame metadata
     df_data = {
-        "fn": [str(files[3]), str(files[4])],
+        "file_path": [str(files[3]), str(files[4])],
         "assay": ["manual_assay", "manual_assay"],
         "method": ["manual_method", "manual_method"],
         "custom_label": ["label1", "label2"]

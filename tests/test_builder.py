@@ -11,15 +11,22 @@ def test_builder_add_tracks(sample_bigwig):
 
 def test_builder_from_df(tmp_dir):
     df = pd.DataFrame([
-        {"fn": str(tmp_dir / "f1.bw"), "cell": "K562"},
-        {"fn": str(tmp_dir / "f2.bw"), "cell": "GM12878"}
+        {"file_path": str(tmp_dir / "f1.bw"), "cell": "K562"},
+        {"file_path": str(tmp_dir / "f2.bw"), "cell": "GM12878"}
     ])
     # Touch files so Track validation passes (if we ever enable it)
-    for f in df["fn"]: Path(f).touch()
+    for f in df["file_path"]: Path(f).touch()
     
     builder = HubBuilder().add_tracks_from_df(df)
     assert len(builder.tracks) == 2
     assert builder.tracks[0].metadata["cell"] == "K562"
+
+
+def test_builder_from_df_requires_file_path_column(tmp_dir):
+    df = pd.DataFrame([{"fn": str(tmp_dir / "f1.bw")}])
+
+    with pytest.raises(ValueError, match="file_path"):
+        HubBuilder().add_tracks_from_df(df)
 
 def test_builder_chaining(sample_bigwig):
     builder = (
@@ -130,7 +137,7 @@ def test_builder_sort_metadata(sample_bigwig):
     )
 
     df = builder._prepare_design_df()
-    assert list(df.columns[:4]) == ["fn", "path", "name", "ext"]
+    assert list(df.columns[:4]) == ["file_path", "path", "name", "ext"]
     assert list(df.columns[4:]) == ["alpha", "zeta"]
 
 
@@ -168,8 +175,8 @@ def test_builder_respects_user_unique_names(tmp_dir):
 
     df = pd.DataFrame(
         [
-            {"fn": str(p1), "name": "track_a"},
-            {"fn": str(p2), "name": "track_b"},
+            {"file_path": str(p1), "name": "track_a"},
+            {"file_path": str(p2), "name": "track_b"},
         ]
     )
     builder = HubBuilder().add_tracks_from_df(df)
@@ -185,8 +192,8 @@ def test_builder_fill_missing_group_values(tmp_dir):
     p2.touch()
     df = pd.DataFrame(
         [
-            {"fn": str(p1), "condition": "treated"},
-            {"fn": str(p2), "condition": None},
+            {"file_path": str(p1), "condition": "treated"},
+            {"file_path": str(p2), "condition": None},
         ]
     )
     builder = (
