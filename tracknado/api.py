@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING
 import pandas as pd
 import trackhub
 from loguru import logger
+from .colors import parse_color
 
 if TYPE_CHECKING:
     from typing import Dict, List, Union
@@ -69,7 +70,8 @@ class TrackDesign:
         self.overlay_tracks = self._get_overlay_tracks()
         self._add_overlay_track_indicators()
 
-        self._add_track_colors(color_by=color_by)
+        color_column = "color" if "color" in self.details.columns else None
+        self._add_track_colors(color_by=color_by, color_column=color_column)
 
     @classmethod
     def from_design(cls, design: pd.DataFrame, **kwargs) -> "TrackDesign":
@@ -82,8 +84,6 @@ class TrackDesign:
         color_column: str = None,
     ) -> None:
         """Add a column to the details dataframe with a color for each track"""
-
-        from PIL import ImageColor
 
         if color_by:
             if isinstance(color_by, str):
@@ -109,7 +109,7 @@ class TrackDesign:
 
                 # Add a column to the details dataframe with the color for each track
                 self.details["color"] = self.details[color_by].apply(
-                    lambda row: ImageColor.getrgb(color_dict[tuple([c for c in row])]),
+                    lambda row: parse_color(color_dict[tuple([c for c in row])]),
                     axis=1,
                 )
 
@@ -123,24 +123,7 @@ class TrackDesign:
                 f"Color column {color_column} missing"
             )
 
-            colors = []
-            for i, color in enumerate(self.details[color_column]):
-                if isinstance(color, tuple):
-                    c = color
-                elif isinstance(color, str):
-                    if color.startswith("#"):
-                        c = ImageColor.getrgb(color)
-                    else:
-                        c = color.split(",")
-                        c = tuple([int(x) for x in c])
-                else:
-                    raise ValueError(
-                        f"Color column {color_column} must be a tuple or string"
-                    )
-
-                colors.append(c)
-
-            self.details["color"] = colors
+            self.details["color"] = self.details[color_column].map(parse_color)
 
     def _add_subgroup_definitions_to_df(
         self, df: pd.DataFrame, subgroup_by: list[str] = None
@@ -525,7 +508,7 @@ class HubGenerator:
         """Generate a trackhub.Track object from a row in the details dataframe"""
 
         extra_kwargs = dict()
-        if hasattr(track, "color"):
+        if hasattr(track, "color") and track.color is not None:
             extra_kwargs["color"] = ",".join([str(x) for x in track.color])
 
         if hasattr(track, "subgroup_names"):

@@ -11,7 +11,7 @@ from tracknado.cli import app
 def test_configure_builder_from_inputs_matches_cli_defaults(seqnado_structure, tmp_dir):
     metadata = tmp_dir / "tracks.csv"
     metadata.write_text(
-        "fn,cell_type\n"
+        "file_path,cell_type\n"
         f"{seqnado_structure},Tcell\n"
     )
 
@@ -120,7 +120,7 @@ def test_cli_design_generates_editable_metadata_table(tmp_dir):
 
     assert result.exit_code == 0, result.output
     df = pd.read_csv(output)
-    assert list(df["fn"]) == [str(track_a), str(track_b)]
+    assert list(df["file_path"]) == [str(track_a), str(track_b)]
     assert list(df["name"]) == ["k562_ctcf", "peaks"]
     assert list(df["ext"]) == ["bigWig", "bigBed"]
     for col in ["color", "supertrack", "composite", "overlay"]:

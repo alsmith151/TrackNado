@@ -1,103 +1,79 @@
-# Track Metadata
+# Metadata
 
-TrackNado centers around a **Track Design**—a table where each row is a track and columns represent metadata (sample name, assay, coloring, etc.).
+TrackNado uses a table to turn files into well-labelled browser tracks. Each row describes one file. Columns are ordinary metadata fields that you can reuse for labels, colours, and layout.
 
-## Positional Metadata
+## Required and useful columns
 
-You can provide metadata via a CSV/TSV file using the `--metadata` flag. This file **must** include a `fn` column containing the paths to your track files. Delimiter (comma or tab) is auto-detected, so `.csv` and `.tsv` both work.
+`file_path` is the only required column. It contains a path to the input file. TrackNado accepts both CSV and TSV files and detects the delimiter automatically.
 
-### Worked Example
+| Column | Purpose |
+| --- | --- |
+| `file_path` | Required path to the data file. |
+| `name` | Optional label shown in UCSC. Defaults to the file stem. |
+| `ext` | Optional track type, such as `bigWig`, `bigBed`, or `bam`. Usually filled by `tracknado design`. |
+| `color` | Optional colour. Use a name such as `steelblue`, a hex value such as `#4682B4`, or `R,G,B`. |
+| other columns | Your fields, such as `assay`, `cell_type`, `condition`, and `replicate`. Use them with the grouping and colour options. |
 
-Generate a starting template from your input files, then fill it in:
-
-```bash
-tracknado create --template tracks.csv
-```
-
-This produces a header-only file with the standard columns:
+For example:
 
 ```csv
-fn,name,track_type,color,supertrack,composite,overlay
+file_path,name,ext,assay,cell_type,condition,replicate,color
+tracks/k562_ctcf_r1.bw,K562 CTCF rep 1,bigWig,ChIP-seq,K562,untreated,1,crimson
+tracks/k562_ctcf_r2.bw,K562 CTCF rep 2,bigWig,ChIP-seq,K562,untreated,2,crimson
+tracks/gm12878_ctcf_r1.bw,GM12878 CTCF rep 1,bigWig,ChIP-seq,GM12878,untreated,1,#4169E1
+tracks/peaks.bb,Called peaks,bigBed,Peaks,All,,,#464646
 ```
 
-Fill in one row per track. Only `fn` is required — every other column is optional metadata you can reference later with `--color-by`, `--supergroup-by`, `--subgroup-by`, or `--overlay-by`:
+Generate a starter table instead of typing paths by hand:
 
-| fn | name | track_type | color | supertrack | composite | overlay |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| data/k562_ctcf_rep1.bw | K562 CTCF Rep1 | bigWig | 255,0,0 | ChIP-seq | K562 | CTCF |
-| data/k562_ctcf_rep2.bw | K562 CTCF Rep2 | bigWig | 255,0,0 | ChIP-seq | K562 | CTCF |
-| data/gm12878_ctcf_rep1.bw | GM12878 CTCF Rep1 | bigWig | 0,0,255 | ChIP-seq | GM12878 | CTCF |
-| data/peaks.bb | Called Peaks | bigBed | | Annotation | | |
+```bash
+tracknado design -i tracks/*.bw -i tracks/*.bb -o tracks.csv
+```
 
-Then build the hub, pointing at whichever columns should drive grouping and color:
+`tracknado create --template tracks.csv` creates a header-only table when that is more convenient.
+
+## Use columns when building
+
+Pass the names of your columns—not fixed special names—to the build command:
 
 ```bash
 tracknado create \
   --metadata tracks.csv \
   --output my_hub \
   --genome-name hg38 \
-  --supergroup-by supertrack \
-  --subgroup-by composite \
-  --overlay-by overlay \
-  --color-by color
+  --supergroup-by assay \
+  --subgroup-by cell_type \
+  --subgroup-by condition \
+  --color-by cell_type
 ```
 
-Equivalent Python API:
+This makes one top-level group per assay and a cell-type-by-condition composite display within it. `--color-by` assigns a palette from categories. To use the explicit values in the `color` column instead, omit `--color-by`.
+
+The `color` column accepts named colours (for example `steelblue`), six- or three-digit hex values (`#4682B4` or `#48B`), CSS `rgb(70, 130, 180)`, and the original comma-separated RGB form (`70,130,180`). TrackNado converts these to the RGB values UCSC requires.
+
+See [Organising tracks](organization.md) for guidance on when to use each layout option.
+
+## Derive metadata from paths
+
+If your naming convention is consistent, TrackNado can populate fields before you edit the table. A regular expression must use named capture groups:
+
+```bash
+tracknado design \
+  -i tracks/*.bw \
+  -o tracks.csv \
+  --grouping-regex '(?P<cell_type>[^_]+)_(?P<assay>[^_]+)'
+```
+
+The command adds `cell_type` and `assay` columns from names such as `K562_CTCF.bw`. Check the resulting rows before building: filenames are convenient input, but a metadata table is the final source of truth.
+
+For seqnado-style directory structures, use `--seqnado` instead. The equivalent Python methods are `.with_grouping_regex(...)` and `.with_metadata_extractor(tn.from_seqnado_path)`.
+
+## Missing group values
+
+Blank values are acceptable if those tracks should not participate in a particular group. If every track needs a value in an active grouping field, fill the blanks in the CSV or use the Python API:
 
 ```python
-import pandas as pd
-import tracknado as tn
-
-df = pd.read_csv("tracks.csv")
-
-hub = (
-    tn.HubBuilder()
-    .add_tracks_from_df(df)
-    .group_by("supertrack", as_supertrack=True)
-    .group_by("composite")
-    .overlay_by("overlay")
-    .color_by("color")
-    .build(name="my_hub", genome="hg38", outdir="my_hub/")
-)
-hub.stage_hub()
+builder.with_missing_groups("Other", "condition")
 ```
 
-Notes:
-
-- `color` accepts an `R,G,B` triple (0-255 each); leave blank to auto-assign via `--color-by` on a categorical column instead (e.g. `--color-by supertrack`).
-- Blank cells in grouping columns (like `composite`/`overlay` for the peaks row above) are fine — see [Handling Missing Group Values](organization.md#handling-missing-group-values) to give them a catch-all label.
-
-## Automated Extraction
-
-You can also extract metadata from file paths using extraction functions. This allows you to encode metadata in your directory structure.
-
-```python
-from tracknado import HubBuilder, from_seqnado_path
-
-builder = (
-    HubBuilder()
-    .add_tracks(["data/sample1.bigWig"])
-    .with_metadata_extractor(from_seqnado_path) # Extracts from 'sample1'
-)
-```
-
-### Extraction Patterns
-
-TrackNado supports several built-in extractors:
-- `from_seqnado_path`: Expects a standard bioinformatic directory structure.
-- `from_filename_pattern`: Uses regex to pull metadata from names.
-- `from_parent_dirs`: Uses the names of parent directories as metadata values.
-- `with_static_metadata`: Adds constant key/value metadata (useful as a stub/default layer).
-- `compose_extractors`: Chains extractors in order and resolves key collisions with `overwrite=True/False`.
-
-### Stubbing + Layering Metadata
-
-```python
-import tracknado as tn
-
-extractor = tn.compose_extractors(
-    tn.with_static_metadata(condition="NA", replicate="1"),
-    tn.from_filename_pattern(r"(?P<sample>.+?)_(?P<condition>.+?)\."),
-    overwrite=False,  # keep defaults when a field is missing
-)
-```
+This replaces empty `condition` values with `Other` before the hub is generated.

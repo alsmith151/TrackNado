@@ -1,19 +1,8 @@
 # Examples
 
-TrackNado provides several examples demonstrating how to use the library for different scenarios.
+These scripts show how TrackNado is used in real workflows. Read the [Getting started](../guide/getting-started.md) guide first if you are new to track hubs; it explains the metadata and layout choices the scripts assume.
 
-## 1. CapCruncher Hub Generation
-Replicates the complex logic of a legacy pipeline for capturing-based 3C data.
-[View Source Code](https://github.com/alsmith151/TrackNado/blob/main/examples/capcruncher_hub.py)
-
-## 2. Seqnado Workflow
-Integration with Snakemake and the `seqnado` directory structure.
-[View Source Code](https://github.com/alsmith151/TrackNado/blob/main/examples/seqnado_make_hub.py)
-
-## 3. Complex Edge Cases
-Demonstrates merging multiple hubs, handling mixed file types, and reconciling different grouping strategies.
-[View Source Code](https://github.com/alsmith151/TrackNado/blob/main/examples/complex_edge_cases.py)
-
-## 4. Simple Refactored Workflow
-A clean example of the new fluent API.
-[View Source Code](https://github.com/alsmith151/TrackNado/blob/main/examples/refactored_make_hub.py)
+- [Fluent API](fluent-api.md) — a compact Python build using `HubBuilder`.
+- [CapCruncher](capcruncher.md) — a hub built for capture-based 3C data.
+- [Snakemake](snakemake.md) — integration with a seqnado-style workflow.
+- [Edge cases](edge-cases.md) — merging and mixed data layouts.

@@ -8,7 +8,7 @@ from rich.console import Console
 
 import tracknado as tn
 
-app = typer.Typer(help="TrackNado: Generate UCSC track hubs with ease. TrackNado go BRRRR!")
+app = typer.Typer(help="Build and validate UCSC Genome Browser track hubs.")
 console = Console()
 
 @app.command()
@@ -20,7 +20,7 @@ def create(
         None, "--output", "-o", help="The directory where the staged hub and tracknado_config.json will be created."
     ),
     metadata: Optional[pathlib.Path] = typer.Option(
-        None, "--metadata", "-m", help="Path to a CSV/TSV containing track metadata. Must include a 'fn' column with file paths."
+        None, "--metadata", "-m", help="Path to a CSV/TSV containing track metadata. Must include a 'file_path' column."
     ),
     seqnado: bool = typer.Option(
         False, "--seqnado", help="Automatically extract sample metadata using the seqnado directory structure convention."
@@ -85,7 +85,7 @@ def create(
 ):
     """Create a UCSC track hub from a set of files."""
     if template:
-        df = pd.DataFrame(columns=["fn", "name", "track_type", "color", "supertrack", "composite", "overlay"])
+        df = pd.DataFrame(columns=["file_path", "name", "track_type", "color", "supertrack", "composite", "overlay"])
         df.to_csv(template, index=False)
         logger.info(f"Created template metadata file at {template}")
         raise typer.Exit()
@@ -156,7 +156,7 @@ def design(
     """
     Generate an editable metadata table from a set of track files.
 
-    Writes one row per file (fn, name, ext, plus anything extracted via
+    Writes one row per file (file_path, name, ext, plus anything extracted via
     --seqnado/--grouping-regex) with empty color/supertrack/composite/overlay
     columns ready to fill in and pass to 'tracknado create --metadata'.
     """
@@ -279,8 +279,6 @@ def cli():
 
 if __name__ == "__main__":
     app()
-
-
 
 
 

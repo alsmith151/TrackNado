@@ -1,77 +1,72 @@
-# Organizing Your Hub
+# Organising tracks
 
-TrackNado supports three main types of track organization, mapping directly to UCSC Genome Browser concepts.
+Choose a layout based on how someone will browse the data. TrackNado maps metadata columns to three UCSC structures: supertracks, composite tracks, and overlays. You can use more than one, but start with the smallest structure that makes the hub easy to scan.
 
-## 1. SuperTracks (Folders)
+## Supertracks: broad sections
 
-Top-level containers that group tracks together. These appear as folders in the track selection area.
+A supertrack creates a top-level section in the track controls. Use it for genuinely different families of data, such as signal, peaks, and annotation.
 
-*   **CLI**: `--supergroup-by column_name`
-*   **API**: `.group_by("column_name", as_supertrack=True)`
-
-## 2. Composite Tracks (Matrices)
-
-A multi-dimensional display matrix (matrix of checkboxes). This is the most powerful way to organize large numbers of tracks.
-
-*   **CLI**: `--subgroup-by col1 --subgroup-by col2`
-*   **API**: `.group_by("col1", "col2")`
-
-## 3. Overlay Tracks (Signals)
-
-Combines multiple signals into a single plot (e.g., multi-wiggle).
-
-*   **CLI**: `--overlay-by column_name`
-*   **API**: `.overlay_by("column_name")`
-
----
-
-## Example Metadata Table Structures
-
-Below are examples of how to structure your metadata file (e.g., `tracks.csv`) for different hub layouts.
-
-### Basic Composite Track (Matrix Display)
-
-To create a matrix of checkboxes where columns are **Cell Type** and rows are **Assay**:
-
-| fn | cell_type | assay | name |
-| :--- | :--- | :--- | :--- |
-| tracks/k562_ctcf.bw | K562 | CTCF | K562 CTCF Signal |
-| tracks/gm12878_ctcf.bw | GM12878 | CTCF | GM12878 CTCF Signal |
-| tracks/k562_h3k27ac.bw | K562 | H3K27ac | K562 H3K27ac Signal |
-
-### Grouping with SuperTracks (Folders)
-
-To group different types of data (Signals vs. Regions) into high-level containers:
-
-| fn | category | name |
-| :--- | :--- | :--- |
-| tracks/chip_signal.bw | Signal | ChIP-seq Signal |
-| tracks/peaks.bb | Regions | Called Peaks |
-| tracks/genes.gtf | Regions | Gene Annotations |
-
-### Combined Layout (Folders + Matrix)
-
-You can combine these strategies for complex hubs. This will create folders for each **Assay**, and within those, a matrix for **Sample** and **Condition**.
-
-| fn | assay | sample | condition | name |
-| :--- | :--- | :--- | :--- | :--- |
-| data/s1_wt.bw | RNA-seq | S1 | WT | RNA S1 WT |
-| data/s1_ko.bw | RNA-seq | S1 | KO | RNA S1 KO |
-| data/atp_s1.bw | ATAC-seq | S1 | WT | ATAC S1 WT |
-
-## Handling Missing Group Values
-
-If some tracks have missing values in grouping columns, assign a catch-all label so they remain visible in the hub.
-
-```python
-import tracknado as tn
-
-builder = (
-    tn.HubBuilder()
-    .add_tracks_from_df(df)
-    .group_by("condition")
-    .with_missing_groups("UNASSIGNED", "condition")
-)
+```bash
+tracknado create --metadata tracks.csv --output my_hub \
+  --genome-name hg38 --supergroup-by data_type
 ```
 
-Tip: for tracks that belong to different logical families, use `as_supertrack=True` for a high-level split first, then subgroup within each family.
+| file_path | name | data_type |
+| --- | --- | --- |
+| `tracks/ctcf.bw` | CTCF signal | Signal |
+| `tracks/peaks.bb` | CTCF peaks | Peaks |
+| `tracks/genes.bb` | Genes | Annotation |
+
+In Python, use `.group_by("data_type", as_supertrack=True)`.
+
+## Composite tracks: compare combinations
+
+A composite track provides selectors for combinations of metadata fields. It is useful for a regular experimental design, for example multiple assays across cell types and conditions.
+
+```bash
+tracknado create --metadata tracks.csv --output my_hub \
+  --genome-name hg38 \
+  --subgroup-by cell_type \
+  --subgroup-by assay
+```
+
+| file_path | cell_type | assay |
+| --- | --- | --- |
+| `tracks/k562_ctcf.bw` | K562 | CTCF |
+| `tracks/gm12878_ctcf.bw` | GM12878 | CTCF |
+| `tracks/k562_h3k27ac.bw` | K562 | H3K27ac |
+
+Use columns whose values are short, stable, and meaningful to a reader. A column with a unique value for every file is rarely a helpful composite dimension.
+
+In Python, use `.group_by("cell_type", "assay")`.
+
+## Overlays: display related signals together
+
+An overlay combines related tracks in a multi-signal display. Use it for tracks users will usually compare at the same genomic location, such as conditions for a sample.
+
+```bash
+tracknado create --metadata tracks.csv --output my_hub \
+  --genome-name hg38 --overlay-by condition
+```
+
+| file_path | sample | condition |
+| --- | --- | --- |
+| `tracks/s1_control.bw` | S1 | Control |
+| `tracks/s1_treated.bw` | S1 | Treated |
+
+In Python, use `.overlay_by("condition")`.
+
+## A practical pattern
+
+For a larger project, use a supertrack for the broad data family, a composite track for the experimental design, and an overlay only where viewing signals together is useful:
+
+```bash
+tracknado create --metadata tracks.csv --output my_hub \
+  --genome-name hg38 \
+  --supergroup-by data_type \
+  --subgroup-by cell_type \
+  --subgroup-by assay \
+  --overlay-by condition
+```
+
+Build a small subset first and inspect it in UCSC. A flat hub is often the clearest answer for only a few tracks.
