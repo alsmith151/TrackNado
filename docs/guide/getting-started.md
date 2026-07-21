@@ -70,6 +70,99 @@ In the UCSC Genome Browser, open **My Data → Track Hubs**, then enter the publ
 https://example.org/path/to/my_hub/project_tracks.hub.txt
 ```
 
+### Print the URL with a hosting profile (optional)
+
+If your group has a web-published storage area, you can set up a hosting profile
+once. TrackNado then prints the correct hub URL whenever you build into that
+area. The profile is personal: it is not shared with TrackNado users on other
+HPCs or web servers.
+
+#### Create your profile file
+
+On the command line, run:
+
+```bash
+mkdir -p ~/.config/tracknado
+nano ~/.config/tracknado/hosting.toml
+```
+
+The second command opens a new text file. Paste the following example, replacing
+the values only if your local HPC and public web locations differ:
+
+```toml
+[hosting.example_web]
+local_root = "/shared/track-hubs"
+public_root = "https://tracks.example.org/public"
+```
+
+In `nano`, save with **Ctrl+O**, press **Enter** to accept the filename, then
+exit with **Ctrl+X**. Do not put a trailing `/` at the end of either value.
+
+#### Choose the two roots
+
+`local_root` is the shared beginning of the HPC paths where you publish hubs.
+`public_root` is the matching beginning of their public URLs. Choose them so the
+remaining part of a path is identical in both places.
+
+For example, an output directory and its public directory are:
+
+```text
+HPC output:   /shared/track-hubs/researcher/chipseq/experiment-2025-09-29
+Public path:  https://tracks.example.org/public/researcher/chipseq/experiment-2025-09-29
+```
+
+The part that changes is the root:
+
+```text
+/shared/track-hubs
+https://tracks.example.org/public
+```
+
+Everything after those roots (`researcher/chipseq/experiment-2025-09-29`) stays
+the same. If you do not know the public URL corresponding to a directory, ask
+your HPC or web-service administrator before creating the profile.
+
+#### Use the profile
+
+Build your hub as usual, adding `--hosting example_web`:
+
+```bash
+tracknado create \
+  --metadata tracks.csv \
+  --output /shared/track-hubs/researcher/chipseq/experiment-2025-09-29 \
+  --hub-name example_hub \
+  --genome-name hg38 \
+  --hosting example_web
+```
+
+TrackNado prints:
+
+```text
+https://tracks.example.org/public/researcher/chipseq/experiment-2025-09-29/example_hub.hub.txt
+```
+
+To save that URL to a text file for a workflow or to share it later, add
+`--hub-url-file`:
+
+```bash
+tracknado create \
+  --metadata tracks.csv \
+  --output /shared/track-hubs/researcher/chipseq/experiment-2025-09-29 \
+  --hub-name example_hub \
+  --genome-name hg38 \
+  --hosting example_web \
+  --hub-url-file hub_url.txt
+```
+
+This creates `hub_url.txt` in the current directory containing only the public
+hub URL. The directory containing the file must already exist.
+
+You can define more than one profile in the same file by adding another
+`[hosting.name]` section, then select it with `--hosting name`. Use
+`--hosting-config path/to/hosting.toml` if the profile file needs to live in a
+project or shared location. Without `--hosting`, TrackNado stages the hub
+normally and does not attempt to guess its public URL.
+
 ## Build the same hub from Python
 
 ```python
