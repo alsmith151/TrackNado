@@ -15,7 +15,7 @@ console = Console()
 @app.command()
 def create(
     input_files: Optional[List[pathlib.Path]] = typer.Option(
-        None, "--input-files", "-i", help="A list of local track files (bigWig, bigBed, BAM, etc.) to include in the hub."
+        None, "--input-files", "-i", help="Local track files or glob patterns (for example, 'tracks/*.bigWig') to include in the hub."
     ),
     output: Optional[pathlib.Path] = typer.Option(
         None, "--output", "-o", help="The directory where the staged hub and tracknado_config.json will be created."
@@ -166,7 +166,7 @@ def create(
 @app.command()
 def design(
     input_files: List[pathlib.Path] = typer.Option(
-        ..., "--input-files", "-i", help="Track files (bigWig, bigBed, BAM, etc.) to generate a metadata table for."
+        ..., "--input-files", "-i", help="Track files or glob patterns (for example, 'tracks/*.bigWig') for the metadata table."
     ),
     output: pathlib.Path = typer.Option(
         ..., "--output", "-o", help="Path to write the editable metadata CSV/TSV to."

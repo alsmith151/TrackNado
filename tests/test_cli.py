@@ -176,3 +176,23 @@ def test_cli_design_generates_editable_metadata_table(tmp_dir):
     for col in ["color", "supertrack", "composite", "overlay"]:
         assert col in df.columns
     assert "path" not in df.columns
+
+
+def test_cli_design_expands_quoted_glob_pattern(tmp_dir):
+    tracks_dir = tmp_dir / "tracks"
+    tracks_dir.mkdir()
+    (tracks_dir / "k562_ctcf.bw").touch()
+    (tracks_dir / "peaks.bb").touch()
+    output = tmp_dir / "tracks.csv"
+
+    runner = CliRunner()
+    result = runner.invoke(
+        app,
+        ["design", "-i", str(tracks_dir / "*"), "-o", str(output)],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert list(pd.read_csv(output)["file_path"]) == [
+        str(tracks_dir / "k562_ctcf.bw"),
+        str(tracks_dir / "peaks.bb"),
+    ]

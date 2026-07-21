@@ -12,7 +12,7 @@ tracknado design -i tracks/*.bw -o tracks.csv
 
 | Option | Meaning |
 | --- | --- |
-| `-i`, `--input-files` | One or more track files. Repeat the option to add another set. |
+| `-i`, `--input-files` | One or more track files or glob patterns (for example, `'tracks/*.bw'`). Repeat the option to add another set. Quote glob patterns to let TrackNado expand them, including recursive `**` patterns. |
 | `-o`, `--output` | CSV or TSV path to write. |
 | `--seqnado` | Extract fields from a seqnado-style directory layout. |
 | `--grouping-regex` | Extract named groups from file names. |
@@ -27,7 +27,7 @@ tracknado create --metadata tracks.csv --output my_hub --genome-name hg38
 
 | Option | Meaning |
 | --- | --- |
-| `-i`, `--input-files` | Track files to include. Use this instead of `--metadata` when no table is needed. |
+| `-i`, `--input-files` | Track files or glob patterns to include. Quote patterns such as `'tracks/**/*.bigWig'` to let TrackNado expand them. Use this instead of `--metadata` when no table is needed. |
 | `-m`, `--metadata` | CSV or TSV with a `file_path` column. |
 | `-o`, `--output` | Staged hub directory. Required unless creating a template. |
 | `-t`, `--template` | Write a header-only metadata template and exit. |
