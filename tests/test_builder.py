@@ -9,6 +9,24 @@ def test_builder_add_tracks(sample_bigwig):
     assert len(builder.tracks) == 1
     assert builder.tracks[0].metadata["antibody"] == "CTCF"
 
+
+def test_builder_add_tracks_expands_glob_patterns(tmp_dir):
+    tracks_dir = tmp_dir / "tracks"
+    tracks_dir.mkdir()
+    first = tracks_dir / "a.bigWig"
+    second = tracks_dir / "b.bigWig"
+    first.touch()
+    second.touch()
+
+    builder = HubBuilder().add_tracks([str(tracks_dir / "*.bigWig")])
+
+    assert [track.path for track in builder.tracks] == [first, second]
+
+
+def test_builder_add_tracks_rejects_unmatched_glob(tmp_dir):
+    with pytest.raises(ValueError, match="No files matched glob pattern"):
+        HubBuilder().add_tracks([str(tmp_dir / "*.bigWig")])
+
 def test_builder_from_df(tmp_dir):
     df = pd.DataFrame([
         {"file_path": str(tmp_dir / "f1.bw"), "cell": "K562"},

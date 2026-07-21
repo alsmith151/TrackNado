@@ -1,4 +1,5 @@
 from __future__ import annotations
+import glob
 import pathlib
 from typing import Callable, Any, Optional, Union
 import pandas as pd
@@ -44,10 +45,24 @@ class HubBuilder(BaseModel):
     def add_tracks(
         self, paths: list[str] | list[pathlib.Path], **common_metadata: str
     ) -> HubBuilder:
-        """Add multiple tracks from paths."""
+        """Add multiple tracks from paths or glob patterns.
+
+        Glob patterns are expanded before tracks are added, including recursive
+        patterns such as ``tracks/**/*.bigWig``.  A pattern that matches no
+        files raises an error instead of being treated as a literal path.
+        """
         for p in paths:
-            path = pathlib.Path(p)
-            self.tracks.append(Track(path=path, metadata=common_metadata.copy()))
+            pattern = str(p)
+            matches = sorted(glob.glob(pattern, recursive=True))
+            if glob.has_magic(pattern):
+                if not matches:
+                    raise ValueError(f"No files matched glob pattern: {pattern}")
+                track_paths = (pathlib.Path(match) for match in matches)
+            else:
+                track_paths = (pathlib.Path(p),)
+
+            for path in track_paths:
+                self.tracks.append(Track(path=path, metadata=common_metadata.copy()))
         return self
 
     def add_tracks_from_df(
