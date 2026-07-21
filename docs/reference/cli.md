@@ -49,7 +49,8 @@ tracknado create --metadata tracks.csv --output my_hub --genome-name hg38
 | `--description` | HTML file to include as the hub landing page. |
 | `--sort-metadata` | Sort non-standard metadata columns in the saved configuration. |
 | `--remove-existing` | Remove the existing output directory before staging. |
-| `--url-prefix` | Base URL printed with the successful build message; it does not upload files. |
+| `--hosting` | Name of a user-defined TOML hosting profile used to report the public hub URL. |
+| `--hosting-config` | Optional path to the TOML hosting-profile file. Defaults to `~/.config/tracknado/hosting.toml` (or `$XDG_CONFIG_HOME/tracknado/hosting.toml`). |
 
 ## `tracknado merge`
 

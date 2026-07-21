@@ -7,6 +7,7 @@ import typer
 from rich.console import Console
 
 import tracknado as tn
+from .hosting import hub_url_from_profile
 
 app = typer.Typer(help="Build and validate UCSC Genome Browser track hubs.")
 console = Console()
@@ -49,8 +50,11 @@ def create(
     overlay_by: Optional[List[str]] = typer.Option(
         None, "--overlay-by", help="Metadata columns to define OverlayTracks (e.g., multi-signal plots)."
     ),
-    url_prefix: str = typer.Option(
-        "https://userweb.molbiol.ox.ac.uk", "--url-prefix", help="Base URL where the hub will be hosted (used for final URL reporting)."
+    hosting: Optional[str] = typer.Option(
+        None, "--hosting", help="Name of a user-defined hosting profile used to report the hub URL."
+    ),
+    hosting_config: Optional[pathlib.Path] = typer.Option(
+        None, "--hosting-config", help="Path to a TOML hosting-profile configuration file."
     ),
     convert: bool = typer.Option(
         False, "--convert", help="Enable automatic conversion of formats like BED -> bigBed or GTF -> bigGenePred."
@@ -135,8 +139,13 @@ def create(
     hub.stage_hub(remove_existing=remove_existing)
     
     logger.info(f"Hub created successfully at {output}")
-    hub_url = f"{url_prefix.strip('/')}/{str(output).strip('/')}/{hub_name}.hub.txt"
-    logger.info(f"Hub URL: {hub_url}")
+    if hosting:
+        try:
+            hub_url = hub_url_from_profile(output, hub_name, hosting, hosting_config)
+        except ValueError as exc:
+            console.print(f"[yellow]Hub created, but no URL was reported: {exc}[/yellow]")
+        else:
+            logger.info(f"Hub URL: {hub_url}")
 
 @app.command()
 def design(
@@ -279,7 +288,6 @@ def cli():
 
 if __name__ == "__main__":
     app()
-
 
 
 
