@@ -141,6 +141,22 @@ TrackNado prints:
 https://tracks.example.org/public/researcher/chipseq/experiment-2025-09-29/example_hub.hub.txt
 ```
 
+To save that URL to a text file for a workflow or to share it later, add
+`--hub-url-file`:
+
+```bash
+tracknado create \
+  --metadata tracks.csv \
+  --output /shared/track-hubs/researcher/chipseq/experiment-2025-09-29 \
+  --hub-name example_hub \
+  --genome-name hg38 \
+  --hosting example_web \
+  --hub-url-file hub_url.txt
+```
+
+This creates `hub_url.txt` in the current directory containing only the public
+hub URL. The directory containing the file must already exist.
+
 You can define more than one profile in the same file by adding another
 `[hosting.name]` section, then select it with `--hosting name`. Use
 `--hosting-config path/to/hosting.toml` if the profile file needs to live in a

@@ -51,6 +51,7 @@ tracknado create --metadata tracks.csv --output my_hub --genome-name hg38
 | `--remove-existing` | Remove the existing output directory before staging. |
 | `--hosting` | Name of a user-defined TOML hosting profile used to report the public hub URL. |
 | `--hosting-config` | Optional path to the TOML hosting-profile file. Defaults to `~/.config/tracknado/hosting.toml` (or `$XDG_CONFIG_HOME/tracknado/hosting.toml`). |
+| `--hub-url-file` | Write the resolved public hub URL to a text file. Requires `--hosting`. |
 
 ## `tracknado merge`
 

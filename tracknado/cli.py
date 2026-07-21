@@ -56,6 +56,9 @@ def create(
     hosting_config: Optional[pathlib.Path] = typer.Option(
         None, "--hosting-config", help="Path to a TOML hosting-profile configuration file."
     ),
+    hub_url_file: Optional[pathlib.Path] = typer.Option(
+        None, "--hub-url-file", help="Write the resolved public hub URL to this file (requires --hosting)."
+    ),
     convert: bool = typer.Option(
         False, "--convert", help="Enable automatic conversion of formats like BED -> bigBed or GTF -> bigGenePred."
     ),
@@ -96,6 +99,9 @@ def create(
 
     if not output:
         console.print("[red]Error: Missing option '--output' / '-o'.[/red]")
+        raise typer.Exit(code=1)
+    if hub_url_file and not hosting:
+        console.print("[red]Error: '--hub-url-file' requires '--hosting'.[/red]")
         raise typer.Exit(code=1)
 
     logger.info("Initializing TrackNado")
@@ -146,6 +152,16 @@ def create(
             console.print(f"[yellow]Hub created, but no URL was reported: {exc}[/yellow]")
         else:
             logger.info(f"Hub URL: {hub_url}")
+            if hub_url_file:
+                try:
+                    hub_url_file.expanduser().write_text(f"{hub_url}\n")
+                except OSError as exc:
+                    console.print(
+                        f"[yellow]Hub created, but the URL could not be written to "
+                        f"{hub_url_file}: {exc}[/yellow]"
+                    )
+                else:
+                    logger.info(f"Hub URL written to {hub_url_file}")
 
 @app.command()
 def design(
@@ -288,7 +304,6 @@ def cli():
 
 if __name__ == "__main__":
     app()
-
 
 
 

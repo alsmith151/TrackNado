@@ -97,6 +97,56 @@ def test_cli_create_delegates_to_shared_builder_helper(monkeypatch, tmp_dir):
     assert captured["stage_hub"] is False
 
 
+def test_cli_create_writes_resolved_hub_url_to_file(monkeypatch, tmp_dir):
+    input_file = tmp_dir / "sample.bigWig"
+    input_file.touch()
+    output_dir = tmp_dir / "published-hubs" / "researcher" / "hub"
+    config = tmp_dir / "hosting.toml"
+    config.write_text(
+        "[hosting.site]\n"
+        f'local_root = "{tmp_dir / "published-hubs"}"\n'
+        'public_root = "https://tracks.example.org/public"\n'
+    )
+    url_file = tmp_dir / "hub_url.txt"
+
+    class DummyHub:
+        def stage_hub(self, remove_existing=False):
+            pass
+
+    class DummyBuilder:
+        def build(self, **kwargs):
+            return DummyHub()
+
+    monkeypatch.setattr(
+        "tracknado.cli.tn.configure_builder_from_inputs",
+        lambda **kwargs: DummyBuilder(),
+    )
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "create", "-i", str(input_file), "-o", str(output_dir),
+            "--hub-name", "example_hub", "--hosting", "site",
+            "--hosting-config", str(config), "--hub-url-file", str(url_file),
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert url_file.read_text() == (
+        "https://tracks.example.org/public/researcher/hub/example_hub.hub.txt\n"
+    )
+
+
+def test_cli_create_rejects_hub_url_file_without_hosting(tmp_dir):
+    result = CliRunner().invoke(
+        app,
+        ["create", "-o", str(tmp_dir / "hub"), "--hub-url-file", str(tmp_dir / "url.txt")],
+    )
+
+    assert result.exit_code == 1
+    assert "requires '--hosting'" in result.output
+
+
 def test_cli_design_generates_editable_metadata_table(tmp_dir):
     track_a = tmp_dir / "k562_ctcf.bw"
     track_b = tmp_dir / "peaks.bb"
